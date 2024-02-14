@@ -70,6 +70,32 @@ def output_variables():
         "X-averaged battery electrolyte ohmic losses [V]",
         "X-averaged battery solid phase ohmic losses [V]",
         "Battery open-circuit voltage [V]",
+        # 'Ambient temperature [K]',
+        'Volume-averaged ambient temperature [K]',
+        # 'Cell temperature [K]',
+        # 'Negative current collector temperature [K]',
+        # 'Positive current collector temperature [K]',
+        'X-averaged cell temperature [K]',
+        'Volume-averaged cell temperature [K]',
+        # 'Negative electrode temperature [K]',
+        'X-averaged negative electrode temperature [K]',
+        # 'Separator temperature [K]',
+        'X-averaged separator temperature [K]',
+        # 'Positive electrode temperature [K]',
+        'X-averaged positive electrode temperature [K]',
+        # 'Ambient temperature [C]',
+        # 'Volume-averaged ambient temperature [C]',
+        # 'Cell temperature [C]',
+        # 'Negative current collector temperature [C]',
+        # 'Positive current collector temperature [C]',
+        # 'X-averaged cell temperature [C]',
+        # 'Volume-averaged cell temperature [C]',
+        # 'Negative electrode temperature [C]',
+        # 'X-averaged negative electrode temperature [C]',
+        # 'Separator temperature [C]',
+        # 'X-averaged separator temperature [C]',
+        # 'Positive electrode temperature [C]',
+        # 'X-averaged positive electrode temperature [C]'
     ]
 
 
@@ -257,7 +283,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     phys["pore.A2"] = (Q_spm) / (cp * rho)
     # Heat Source
     T0 = phase["pore.temperature"]
-    t_step = float(time_step / 10)
+    t_step = float(time_step / 100)
     phys.add_model(
         "pore.source",
         model=linear,

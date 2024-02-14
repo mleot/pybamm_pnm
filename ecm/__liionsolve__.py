@@ -165,6 +165,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
             Q = get_cc_power_loss(net, netlist)
+            # print(Q_tot)
+            # print(Q)
             # To do - Get cc heat from netlist
             # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
             # Q_ohm_cc /= net["throat.volume"][res_Ts]
