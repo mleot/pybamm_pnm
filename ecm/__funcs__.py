@@ -261,7 +261,7 @@ def apply_heat_source_lp(project, Q):
     )
 
 
-def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
+def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwargs):
     # To Do - test whether this needs to be transient
     net = project.network
     phase = project.phases()["phase_01"]
@@ -283,7 +283,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     phys["pore.A2"] = (Q_spm) / (cp * rho)
     # Heat Source
     T0 = phase["pore.temperature"]
-    t_step = float(time_step / 100)
+    t_step = float(time_step / kwargs['t_slice'])
     phys.add_model(
         "pore.source",
         model=linear,
@@ -302,7 +302,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
         t_step=t_step,
         t_output=t_step,
         t_tolerance=1e-9,
-        t_precision=12,
+        t_precision=kwargs['t_precision'],
         rxn_tolerance=1e-9,
         t_scheme="implicit",
     )
