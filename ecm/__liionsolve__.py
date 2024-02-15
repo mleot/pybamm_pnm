@@ -36,7 +36,10 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(parameter_values, experiment, initial_soc, project):
+def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwargs):
+    ###########################################################################
+    kwargs.setdefault('t_slice', 10)
+    kwargs.setdefault('t_precision', 12)
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
@@ -175,7 +178,9 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             Q[res_Ts] += Q_tot
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            ecm.run_step_transient(
+                project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
+            )
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
@@ -235,12 +240,15 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             Q[res_Ts] += Q_tot
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            ecm.run_step_transient(
+                project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
+            )
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             ###################################################################
-            step += 1
-            pbar.update(1)
+            if vlims_ok:
+                step += 1
+                pbar.update(1)
     manager.step = step
     toc = ticker.time()
     lp.logger.notice("Step solve finished")
