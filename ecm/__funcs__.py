@@ -72,6 +72,7 @@ def output_variables():
         "X-averaged negative particle surface concentration [mol.m-3]",
         "X-averaged positive particle surface concentration [mol.m-3]",
         "Battery open-circuit voltage [V]",
+        # "Discharge capacity [A.h]",
         # 'Ambient temperature [K]',
         # 'Volume-averaged ambient temperature [K]',
         # 'Cell temperature [K]',

@@ -29,6 +29,7 @@ cmap = cm.inferno
 
 def get_saved_var_names():
     saved_vars = [
+        "Time [s]",
         "Terminal voltage [V]",
         "Volume-averaged cell temperature [K]",
         "Current collector current density [A.m-2]",
@@ -169,7 +170,7 @@ def load_cases(filepath):
 
 def load_data(filepath):
     config = configparser.ConfigParser()
-    net = get_net(filepath=filepath, filename="net.pnm")
+    net,project = get_net(filepath=filepath, filename="net.pnm")
     weights = get_weights(net)
     amps = get_amp_cases(filepath)
     variables = get_saved_var_names()
@@ -177,6 +178,7 @@ def load_data(filepath):
     config.read(os.path.join(filepath, "config.txt"))
     data["config"] = config2dict(config)
     data["network"] = net
+    data["project"] = project
     for amp in amps:
         amp_folder = os.path.join(filepath, str(amp) + "A")
         data[amp] = {}
@@ -191,6 +193,7 @@ def load_data(filepath):
                 if np.any(check_nans):
                     temp = temp[~check_nans, :]
                 data[amp][vi]["data"] = temp
+                data[amp][vi]['name'] = v
                 means = np.zeros(temp.shape[0])
                 for t in range(temp.shape[0]):
                     (mean, std_dev) = weighted_avg_and_std(temp[t, :], weights)
@@ -199,9 +202,10 @@ def load_data(filepath):
                 data[amp][vi]["min"] = np.min(temp, axis=1)
                 data[amp][vi]["max"] = np.max(temp, axis=1)
         if temp is not None:
-            t_hrs = data[amp][10]["data"][:, 0]
+            t_hrs = data[amp][0]["data"][:, 0]
             cap = t_hrs * amp
             data[amp]["capacity"] = cap
+            data[amp]["time"] = t_hrs
     return data
 
 
@@ -212,7 +216,7 @@ def get_net(filepath=None, filename="spider_net.pnm"):
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
-    return net
+    return net, project
 
 
 def get_weights(net):
@@ -272,8 +276,9 @@ def min_mean_max_subplot(
     return ax
 
 
-def chargeogram(data, case_list, amp_list, group="neg"):
-    wrk.clear()
+def chargeogram(data, case_list, amp_list, group="neg",variable_id=0,case_suffix=""):
+    # wrk.clear()
+    var_name=None
     net = data[case_list[0]]["network"]
     nrows = len(case_list)
     ncols = len(amp_list)
@@ -284,7 +289,7 @@ def chargeogram(data, case_list, amp_list, group="neg"):
         sharex=True,
         sharey=False,
     )
-    var = 0  # Current density
+    var = variable_id  # Current density
     Ts = net.throats("spm_" + group + "_inner")
     roll_pos = np.cumsum(net["throat.arc_length"][Ts])
     norm_roll_pos = roll_pos / roll_pos[-1]
@@ -297,35 +302,41 @@ def chargeogram(data, case_list, amp_list, group="neg"):
         for ai, amp in enumerate(amp_list):
             ax = axes[ci][ai]
             data_amalg = data[case][amp][var]["data"].copy()
-            mean = data[case][amp][var]["mean"][0]
+            if var_name is None:
+                var_name = data[case][amp][var]['name']
+            mean = data[case][amp][var]["mean"].mean()
             data_amalg /= mean
             data_amalg *= 100
+            # data_amalg -= 100
             filtered_data = data_amalg[:, spm_ids]
             fmin = int(np.floor(filtered_data.min())) - 1
             fmax = int(np.ceil(filtered_data.max())) + 1
             nbins = fmax - fmin
+            nbins=50
             data_2d = np.zeros([len(spm_ids), nbins], dtype=float)
             for i in range(len(spm_ids)):
                 hdata, bins = np.histogram(
                     filtered_data[:, i], bins=nbins, range=(fmin, fmax), density=True
                 )
-                data_2d[i, :] = hdata * 100
+                data_2d[i, :] = hdata
 
             x_data, y_data = np.meshgrid(norm_roll_pos, (bins[:-1] + bins[1:]) / 2)
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
-            im = ax.pcolormesh(x_data, y_data - 100, heatmap.T, cmap=cm.inferno)
-            ax.set_title(case + ": " + str(amp) + "[A]")
+            im = ax.pcolormesh(x_data, y_data-100, heatmap.T, cmap=cm.inferno)
+            ax.set_title(case + case_suffix + ": " + str(amp) + "[C]")
             if ci == len(case_list) - 1:
                 ax.set_xlabel("Normalized roll position")
             plt.colorbar(im, ax=ax)
             ax.grid(True)
-
+    
+    fig.suptitle(var_name, y=0.98)
+    fig.tight_layout()
     return fig
 
 
-def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False):
-    wrk.clear()
+def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False, x='time'):
+    # wrk.clear()
     net = data[case_list[0]]["network"]
     nrows = len(amp_list)
     ncols = len(case_list)
@@ -352,7 +363,10 @@ def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False):
                 ax = axes[ci]
             data_amalg = data[case][amp][var]["data"].copy()
             ax_list.append(ax)
-            cap = data[case][amp]["capacity"]
+            if x == 'time':
+                cap = data[case][amp]["time"]
+            else:
+                cap = data[case][amp]["capacity"]
             if normed:
                 mean = data[case][amp][var]["mean"][0]
                 data_amalg /= mean
@@ -455,7 +469,7 @@ def super_subplot(data, cases_left, cases_right, amp):
         sharey=False,
     )
     # Top row is current density
-    var = 0
+    var = 3
     row_num = 0
     ax = axes[row_num][0]
     ncolor = len(cases_left)
@@ -496,7 +510,7 @@ def super_subplot(data, cases_left, cases_right, amp):
     ax.grid()
     add_figure_label(ax, 1)
     # 2nd row is temperature
-    var = 1
+    var = 16
     row_num = 1
     ax = axes[row_num][0]
     ncolor = len(cases_left)

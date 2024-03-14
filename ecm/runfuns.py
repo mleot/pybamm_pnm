@@ -97,7 +97,7 @@ def run_simulation(i, row):
 
 
     # return simulation
-    return {'output':output,'project':project,'arc_edges':arc_edges,'rate':row['rate'],'estimated_capacity':estimated_capacity,'electrode height':electrode_height,'unit_stack_thickness':stack_thickness,'N layers':Nlayers}
+    return {'output':output,'project':project,'arc_edges':arc_edges,'rate':row['rate'],'estimate_capacity':estimated_capacity,'estimated_capacity':estimated_capacity,'electrode height':electrode_height,'unit_stack_thickness':stack_thickness,'N layers':Nlayers}
 
 # function to get the experiment
 def get_experiment(row,capacity):
