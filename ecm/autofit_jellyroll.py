@@ -102,7 +102,6 @@ def get_SOC_window_correction_factor(params):
 
 def get_spiral_params(parameter_values, form_factor='18650'):
     spacing = get_unit_stack_thickness(parameter_values)
-    print(f'Unit stack thickness: {spacing*1e6} um')
     if form_factor == '18650':
         inner_diameter = 0.0035
         outer_diameter = 0.018
@@ -110,7 +109,6 @@ def get_spiral_params(parameter_values, form_factor='18650'):
         raise ValueError("form_factor must be '18650' or 'pouch'")
     
     Nlayers, L = calculate_spiral(inner_diameter, outer_diameter, spacing)
-    print(Nlayers, L)
     # nominal_area = parameter_values['Electrode height [m]'] * parameter_values['Electrode width [m]']
     length_3d = 0.065
     dtheta = 15
@@ -133,10 +131,8 @@ def get_electrode_height(project):
 
 def estimate_nominal_capacity(project, parameter_values):
     electrode_height = get_electrode_height(project)
-    print(electrode_height, parameter_values['Electrode width [m]'])
     actual_area = electrode_height * 0.065
     nominal_area = parameter_values['Electrode height [m]'] * parameter_values['Electrode width [m]']
-    print(actual_area, nominal_area)
     nominal_capacity = get_cell_areal_capacity(parameter_values, 'negative')
     areal_capacity = parameter_values["Nominal cell capacity [A.h]"] / nominal_area
     return areal_capacity * actual_area
