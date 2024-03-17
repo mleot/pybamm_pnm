@@ -43,31 +43,18 @@ def get_saved_var_names():
         "X-averaged negative particle surface concentration [mol.m-3]",
         "X-averaged positive particle surface concentration [mol.m-3]",
         "Battery open-circuit voltage [V]",
-        # 'Ambient temperature [K]',
-        # 'Volume-averaged ambient temperature [K]',
-        # 'Cell temperature [K]',
-        # 'Negative current collector temperature [K]',
-        # 'Positive current collector temperature [K]',
-        # 'X-averaged cell temperature [K]',
-        # 'Volume-averaged cell temperature [K]',
-        # 'Negative electrode temperature [K]',
-        # 'X-averaged negative electrode temperature [K]',
-        # 'Separator temperature [K]',
-        # 'X-averaged separator temperature [K]',
-        # 'Positive electrode temperature [K]',
-        # 'X-averaged positive electrode temperature [K]',
-        # 'Ambient temperature [C]',
-        # 'Volume-averaged ambient temperature [C]',
-        # 'Cell temperature [C]',
+        "Volume-averaged irreversible electrochemical heating [W.m-3]",
+        "X-averaged irreversible electrochemical heating [W.m-3]",
+        "X-averaged reversible heating [W.m-3]",
+        "Volume-averaged reversible heating [W.m-3]",
+        'X-averaged Ohmic heating [W.m-3]',
+        'Volume-averaged Ohmic heating [W.m-3]',
         'Negative current collector temperature [C]',
         'Positive current collector temperature [C]',
         # 'X-averaged cell temperature [C]',
         'Volume-averaged cell temperature [C]',
-        # 'Negative electrode temperature [C]',
         'X-averaged negative electrode temperature [C]',
-        # 'Separator temperature [C]',
         'X-averaged separator temperature [C]',
-        # 'Positive electrode temperature [C]',
         'X-averaged positive electrode temperature [C]'
     ]
     return saved_vars
@@ -95,6 +82,12 @@ def get_saved_var_units():
         "W.m-3",
         "W.m-3",
         "W.m-3",
+        "",
+        "" ,    
+        "" ,    
+        "" ,    
+        "" ,    
+        "" ,    
     ]
     return units
 
@@ -399,10 +392,10 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     net = data[case]["network"]
     spm_vol = net["throat.volume"][net["throat.spm_resistor"]]
     # To do - make this much more robust = replace integers with key
-    Q_ohm = data[case][amp][16]["data"]
-    Q_irr = data[case][amp][17]["data"]
-    Q_rev = data[case][amp][18]["data"]
-    Q_ohm_cc = data[case][amp][19]["data"]
+    Q_ohm = data[case][amp][19]["data"]
+    Q_irr = data[case][amp][14]["data"]
+    Q_rev = data[case][amp][17]["data"]
+    Q_ohm_cc = data[case][amp][10]["data"]
     nt, nspm = Q_ohm.shape
     spm_vol_t = np.tile(spm_vol[:, np.newaxis], nt).T
     sum_Q_ohm = np.sum(Q_ohm * spm_vol_t, axis=1)
@@ -413,12 +406,12 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     base = np.zeros(len(sum_Q_ohm))
     cols = cmap(np.linspace(0.1, 0.9, 4))
     labels = []
-    for i in [18, 17, 16, 19]:
+    for i in [19, 14, 17, 10]:
         text = format_label(i).strip("X-averaged").strip("[W.m-3]")
         labels.append(text.lstrip().rstrip().capitalize())
     for si, source in enumerate([sum_Q_rev, sum_Q_irr, sum_Q_ohm, sum_Q_ohm_cc]):
         ax.fill_between(
-            data[case][amp][10]["mean"],
+            data[case][amp][0]["mean"],
             base,
             base + source,
             color=cols[si],
@@ -510,7 +503,7 @@ def super_subplot(data, cases_left, cases_right, amp):
     ax.grid()
     add_figure_label(ax, 1)
     # 2nd row is temperature
-    var = 16
+    var = 22
     row_num = 1
     ax = axes[row_num][0]
     ncolor = len(cases_left)
@@ -641,7 +634,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
     time_var = "Time [h]"
-    time = data[case][amp][10]["mean"]
+    time = data[case][amp][0]["mean"]
     vars2plot = {}
     vars2plot[plot_left] = data[case][amp][variables[0]]["data"]
     vars2plot[plot_right] = data[case][amp][variables[1]]["data"]
