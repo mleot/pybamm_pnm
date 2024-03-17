@@ -50,10 +50,9 @@ def run_simulation(i, row):
     # get parameter values
     parameter_values = pybamm.ParameterValues(row['parameter_set'])
     parameter_values = set_electrode_porosity(parameter_values,row['anode porosity'],'negative')
-    parameter_values = set_particle_volumetric_capacity(parameter_values,row['particle capacity [mAh/cm3]'],'negative')
-    parameter_values = set_initial_SOC(parameter_values,row['SoC'])
-    parameter_values.update(marquis_heat_transfer,check_already_exists=False)
+    parameter_values = set_particle_volumetric_capacity(parameter_values,row['particle capacity [mAh/cm3]'],'negative','')
     parameter_values = set_areal_capacity(row, parameter_values)
+    parameter_values.update(marquis_heat_transfer,check_already_exists=False)
     parameter_values.update(
         {
             "Ambient temperature [K]": row['ambient temperature [C]']+273.15,
@@ -75,10 +74,10 @@ def run_simulation(i, row):
     # ecm.plot_topology(project.network)
 
     estimated_capacity = estimate_nominal_capacity_2(project, parameter_values)
+    parameter_values = set_initial_SOC(parameter_values,row['SoC'])
     electrode_height = get_electrode_height(project)
     stack_thickness = get_unit_stack_thickness(parameter_values)
     Nlayers, L = calculate_spiral(inner_diameter, outer_diameter, stack_thickness)
-    print(estimated_capacity)
     
     # get the experiment
     experiment = get_experiment(row,estimated_capacity)
@@ -97,7 +96,17 @@ def run_simulation(i, row):
 
 
     # return simulation
-    return {'output':output,'project':project,'arc_edges':arc_edges,'rate':row['rate'],'estimate_capacity':estimated_capacity,'estimated_capacity':estimated_capacity,'electrode height':electrode_height,'unit_stack_thickness':stack_thickness,'N layers':Nlayers}
+    return {
+        'output':output,
+        'project':project,
+        'arc_edges':arc_edges,
+        'rate':row['rate'],
+        'commands':row,
+        'estimated_capacity':estimated_capacity,
+        'electrode height':electrode_height,
+        'unit_stack_thickness':stack_thickness,
+        'N layers':Nlayers
+    }
 
 # function to get the experiment
 def get_experiment(row,capacity):
@@ -163,6 +172,19 @@ def get_experiment(row,capacity):
 
         
         experiment = pybamm.Interpolant(i,t,pybamm.t)
+
+    elif row['experiment_type'] == 'Pulse':
+        experiment = pybamm.Experiment(
+                [
+                    (f"Discharge at {row['rate']*capacity} A for 10 seconds (0.5 s period)"),
+                ]
+        )
+    elif row['experiment_type'] == 'Rest':
+        experiment = pybamm.Experiment(
+            [
+                (f"Rest for 5 seconds (1 s period)"),
+            ]
+        )
     elif row['experiment_type'] == 'DCR':
         experiment = pybamm.Experiment(
             [
@@ -206,7 +228,7 @@ def estimate_nominal_capacity_2(project,parameter_values):
         ]
     )
 
-    sim = pybamm.Simulation(model, parameter_values=params0, experiment=experiment)
+    sim = pybamm.Simulation(model, parameter_values=params0, experiment=experiment,solver=pybamm.CasadiSolver('fast with events'))
 
     sol = sim.solve()
 
