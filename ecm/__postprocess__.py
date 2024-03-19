@@ -62,26 +62,26 @@ def get_saved_var_names():
 
 def get_saved_var_units():
     units = [
-        "A.m-2",
-        "K",
-        "V",
-        "-",
-        "-",
-        "mol.m-3",
-        "mol.m-3",
-        "W.m-3",
-        "A",
-        "Ohm",
-        "h",
-        "V",
-        "V",
-        "V",
-        "V",
-        "V",
-        "W.m-3",
-        "W.m-3",
-        "W.m-3",
-        "W.m-3",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
         "",
         "" ,    
         "" ,    
@@ -160,6 +160,9 @@ def load_cases(filepath):
         d[file] = load_data(os.path.join(filepath, file))
     return d
 
+def get_spm_map(filepath, filename="im_spm_map.npz"):
+    spm_map = np.load(os.path.join(filepath, filename))["arr_0"]
+    return spm_map
 
 def load_data(filepath):
     config = configparser.ConfigParser()
@@ -171,6 +174,7 @@ def load_data(filepath):
     config.read(os.path.join(filepath, "config.txt"))
     data["config"] = config2dict(config)
     data["network"] = net
+    data["spm_map"] = get_spm_map(filepath, "im_spm_map.npz")
     data["project"] = project
     for amp in amps:
         amp_folder = os.path.join(filepath, str(amp) + "A")
@@ -269,10 +273,9 @@ def min_mean_max_subplot(
     return ax
 
 
-def chargeogram(data, case_list, amp_list, group="neg",variable_id=0,case_suffix=""):
+def chargeogram(data, case_list, amp_list, group="neg",variable_id=0,case_suffix="",sharey=False):
     # wrk.clear()
     var_name=None
-    net = data[case_list[0]]["network"]
     nrows = len(case_list)
     ncols = len(amp_list)
     fig, axes = plt.subplots(
@@ -280,31 +283,36 @@ def chargeogram(data, case_list, amp_list, group="neg",variable_id=0,case_suffix
         ncols,
         figsize=(int(5 * ncols), int(5 * nrows)),
         sharex=True,
-        sharey=False,
+        sharey=sharey,
     )
     var = variable_id  # Current density
-    Ts = net.throats("spm_" + group + "_inner")
-    roll_pos = np.cumsum(net["throat.arc_length"][Ts])
-    norm_roll_pos = roll_pos / roll_pos[-1]
-    Nspm = net.num_throats("spm_resistor")
-    if group == "neg":
-        spm_ids = np.arange(Nspm)[: len(Ts)]
-    else:
-        spm_ids = np.arange(Nspm)[-len(Ts) :]
     for ci, case in enumerate(case_list):
+
+        net = data[case_list[ci]]["network"]
+        Ts = net.throats("spm_" + group + "_inner")
+        roll_pos = np.cumsum(net["throat.arc_length"][Ts])
+        norm_roll_pos = roll_pos / roll_pos[-1]
+        Nspm = net.num_throats("spm_resistor")
+        if group == "neg":
+            spm_ids = np.arange(Nspm)[: len(Ts)]
+        else:
+            spm_ids = np.arange(Nspm)[-len(Ts) :]
+       
         for ai, amp in enumerate(amp_list):
             ax = axes[ci][ai]
             data_amalg = data[case][amp][var]["data"].copy()
             if var_name is None:
                 var_name = data[case][amp][var]['name']
             mean = data[case][amp][var]["mean"].mean()
-            data_amalg /= mean
-            data_amalg *= 100
+            # data_amalg /= mean
+            # data_amalg *= 100
             # data_amalg -= 100
             filtered_data = data_amalg[:, spm_ids]
-            fmin = int(np.floor(filtered_data.min())) - 1
-            fmax = int(np.ceil(filtered_data.max())) + 1
-            nbins = fmax - fmin
+            # fmin = int(np.floor(filtered_data.min())) - 1
+            # fmax = int(np.ceil(filtered_data.max())) + 1
+            # nbins = fmax - fmin
+            fmin = filtered_data.min()
+            fmax = filtered_data.max()
             nbins=50
             data_2d = np.zeros([len(spm_ids), nbins], dtype=float)
             for i in range(len(spm_ids)):
@@ -316,7 +324,7 @@ def chargeogram(data, case_list, amp_list, group="neg",variable_id=0,case_suffix
             x_data, y_data = np.meshgrid(norm_roll_pos, (bins[:-1] + bins[1:]) / 2)
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
-            im = ax.pcolormesh(x_data, y_data-100, heatmap.T, cmap=cm.inferno)
+            im = ax.pcolormesh(x_data, y_data, heatmap.T, cmap=cm.inferno)
             ax.set_title(case + case_suffix + ": " + str(amp) + "[C]")
             if ci == len(case_list) - 1:
                 ax.set_xlabel("Normalized roll position")
@@ -328,33 +336,36 @@ def chargeogram(data, case_list, amp_list, group="neg",variable_id=0,case_suffix
     return fig
 
 
-def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False, x='time'):
+def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False, x='time',sharey=True,case_suffix=''):
     # wrk.clear()
-    net = data[case_list[0]]["network"]
     nrows = len(amp_list)
     ncols = len(case_list)
     fig, axes = plt.subplots(
-        nrows, ncols, figsize=(int(5 * ncols), int(5 * nrows)), sharex=True, sharey=True
+        nrows, ncols, figsize=(int(5 * ncols), int(5 * nrows)), sharex=True, sharey=sharey
     )
-    Ts = net.throats("spm_" + group + "_inner")
-    roll_pos = np.cumsum(net["throat.arc_length"][Ts])
-    norm_roll_pos = roll_pos / roll_pos[-1]
-    Nspm = net.num_throats("spm_resistor")
-    if group == "neg":
-        spm_ids = np.arange(Nspm)[: len(Ts)]
-    else:
-        spm_ids = np.arange(Nspm)[-(len(Ts)) :]
     ax_list = []
     x_list = []
     y_list = []
     data_list = []
+    var_name = None
     for ci, case in enumerate(case_list):
+        net = data[case_list[ci]]["network"]
+        Ts = net.throats("spm_" + group + "_inner")
+        roll_pos = np.cumsum(net["throat.arc_length"][Ts])
+        norm_roll_pos = roll_pos / roll_pos[-1]
+        Nspm = net.num_throats("spm_resistor")
+        if group == "neg":
+            spm_ids = np.arange(Nspm)[: len(Ts)]
+        else:
+            spm_ids = np.arange(Nspm)[-(len(Ts)) :]
         for ai, amp in enumerate(amp_list):
             if nrows > 1:
                 ax = axes[ci][ai]
             else:
                 ax = axes[ci]
             data_amalg = data[case][amp][var]["data"].copy()
+            if var_name is None:
+                var_name = data[case][amp][var]['name']
             ax_list.append(ax)
             if x == 'time':
                 cap = data[case][amp]["time"]
@@ -374,12 +385,19 @@ def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False, x='ti
             data_list.append(heatmap)
             im = ax.pcolormesh(x_data, y_data, heatmap, cmap=cm.inferno)
             ax.set_title(case)
+            ax.set_title(case + case_suffix + ": " + str(amp) + "[C]")
             if ai == 0:
-                ax.set_ylabel("Capacity [Ah]")
+                if x == 'time':
+                    ax.set_ylabel("Time [s]")
+                else:
+                    ax.set_ylabel("Capacity [Ah]")
             if (ci == len(case_list) - 1) or nrows == 1:
                 ax.set_xlabel("Normalized Roll Position")
             cbar = plt.colorbar(im, ax=ax)
             cbar.ax.locator_params(nbins=6)
+
+    fig.suptitle(var_name, y=0.98)
+    fig.tight_layout()
     return fig
 
 
@@ -618,7 +636,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     net = data[case]["network"]
     weights = get_weights(net)
     project = net.project
-    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, "im_spm_map.npz"))["arr_0"]
+    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, "im_spm_map.npz"))["arr_0"] # ! Add this to the standard output so it can be read in correctly
     title = filename.split("\\")
     if len(title) == 1:
         title = title[0]

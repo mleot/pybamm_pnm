@@ -45,7 +45,7 @@ def set_areal_capacity(row, params):
     params = set_cell_areal_capacity(params, areal_capacity, "positive", True)
     return params
 
-def run_simulation(i, row):
+def run_simulation_cylindrical(i, row):
 
     # get parameter values
     parameter_values = pybamm.ParameterValues(row['parameter_set'])
