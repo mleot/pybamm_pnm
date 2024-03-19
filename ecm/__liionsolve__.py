@@ -40,11 +40,13 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     ###########################################################################
     kwargs.setdefault('t_slice', 10)
     kwargs.setdefault('t_precision', 12)
+    kwargs.setdefault('disable', True)
+    kwargs.setdefault('max_workers', 1)
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
     st = ticker.time()
-    max_workers = int(os.cpu_count() / 2)
+    max_workers = kwargs['max_workers']
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
@@ -156,8 +158,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     vlims_ok = True
     tic = ticker.time()
     netlist["power_loss"] = 0.0
-    plt.figure()
-    with tqdm(total=manager.Nsteps, desc="Initialising simulation") as pbar:
+    # plt.figure()
+    with tqdm(total=manager.Nsteps, desc="Initialising simulation",leave=False,disable=kwargs['disable']) as pbar:
         step = 0
         # reset = True
         while step < manager.Nsteps and vlims_ok:
@@ -173,6 +175,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             # To do - Get cc heat from netlist
             # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
             # Q_ohm_cc /= net["throat.volume"][res_Ts]
+            # manager.output[Qid_cc, step, :] = Q_ohm_cc
             # key = "Volume-averaged Ohmic heating CC [W.m-3]"
             # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
             Q[res_Ts] += Q_tot
@@ -188,8 +191,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             step += 1
             pbar.update(1)
             temp_Ri = np.array(netlist.loc[manager.Ri_map].value)
-            plt.scatter(np.arange(len(temp_Ri)), temp_Ri, label=str(step))
-    plt.legend()
+            # plt.scatter(np.arange(len(temp_Ri)), temp_Ri, label=str(step))
+    # plt.legend()
     manager.step = step
     toc = ticker.time()
     lp.logger.notice("Initial step solve finished")
@@ -221,7 +224,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     vlims_ok = True
     tic = ticker.time()
     netlist["power_loss"] = 0.0
-    with tqdm(total=manager.Nsteps, desc="Stepping simulation") as pbar:
+    with tqdm(total=manager.Nsteps, desc="Stepping simulation",leave=False,disable=kwargs['disable']) as pbar:
         step = 0
         # reset = True
         while step < manager.Nsteps and vlims_ok:
@@ -257,7 +260,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         "Time per step " + str(np.around((toc - tic) / manager.Nsteps, 3)) + "s"
     )
 
-    print("*" * 30)
-    print("ECM Sim time", ticker.time() - st)
-    print("*" * 30)
+    
+    # print("*" * 30)
+    # print("ECM Sim time", ticker.time() - st)
+    # print("*" * 30)
     return project, manager.step_output()
