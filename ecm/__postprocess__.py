@@ -636,7 +636,8 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     net = data[case]["network"]
     weights = get_weights(net)
     project = net.project
-    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, "im_spm_map.npz"))["arr_0"] # ! Add this to the standard output so it can be read in correctly
+    # im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, "im_spm_map.npz"))["arr_0"] # ! Add this to the standard output so it can be read in correctly
+    im_spm_map = data[case]["spm_map"]
     title = filename.split("\\")
     if len(title) == 1:
         title = title[0]

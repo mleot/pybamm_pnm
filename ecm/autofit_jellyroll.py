@@ -211,9 +211,9 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
     elif positive_tab is not None or negative_tab is not None:
         raise ValueError("If one tab is specified, both must be specified")
     else:
-        return project, arc_edges
+        return project, net_arc_edges
 
-    project, arc_edges = ecm.make_spiral_net(math.floor(Nlayers/2),
+    project, net_arc_edges = ecm.make_spiral_net(math.floor(Nlayers/2),
                                          dtheta,
                                          spacing,
                                          inner_diameter,
@@ -224,7 +224,7 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
         
         # tab_widths = [int((i/360)*ncell_total) for i in tab_widths]
 
-    return project, arc_edges
+    return project, net_arc_edges
 
 def get_electrode_height(project):
     net = project.network
