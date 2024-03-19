@@ -100,7 +100,7 @@ def get_SOC_window_correction_factor(params):
     return correction_factor_p, correction_factor_n
 
 
-def get_spiral_params(parameter_values, form_factor='18650'):
+def get_spiral_params(parameter_values, form_factor='18650',tesla_tabs=False):
     spacing = get_unit_stack_thickness(parameter_values)
     print(f'Unit stack thickness: {spacing*1e6} um')
     if form_factor == '18650':
@@ -114,7 +114,7 @@ def get_spiral_params(parameter_values, form_factor='18650'):
     # nominal_area = parameter_values['Electrode height [m]'] * parameter_values['Electrode width [m]']
     length_3d = 0.065
     dtheta = 15
-    tesla_tabs = False
+    # tesla_tabs = False
     import math
     project, arc_edges = ecm.make_spiral_net(math.floor(Nlayers/2),
                                          dtheta,
