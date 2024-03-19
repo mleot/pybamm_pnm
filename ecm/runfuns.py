@@ -167,9 +167,8 @@ def get_experiment(row,capacity):
     elif row['experiment_type'] == 'Full Discharge':
         experiment = pybamm.Experiment(
             [
-                ('Rest for 1 second'),
                 (f"Discharge at {row['rate']*capacity} A for {1/row['rate']} hours")
-            ], period='0.5 seconds'
+            ], period='1 second'
         )
     elif row['experiment_type'] == 'Discharge DC':
         t = np.arange(0,11,0.001)
