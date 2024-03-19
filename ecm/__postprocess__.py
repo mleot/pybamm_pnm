@@ -131,7 +131,7 @@ def format_label(i):
     var_axis_name = label.replace("var_", "")
     var_axis_name = var_axis_name.replace("eta_", "")
     var_axis_name = var_axis_name.replace("_", " ")
-    var_axis_name = var_axis_name + " [" + units[i] + "]"
+    var_axis_name = var_axis_name + " " + units[i] + ""
     return var_axis_name
 
 
@@ -652,7 +652,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     spm_map_copy = im_spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
-    time_var = "Time [h]"
+    time_var = "Time [s]"
     time = data[case][amp][0]["mean"]
     vars2plot = {}
     vars2plot[plot_left] = data[case][amp][variables[0]]["data"]
