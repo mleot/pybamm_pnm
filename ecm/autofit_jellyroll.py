@@ -133,7 +133,7 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
         outer_diameter = 0.021
         length_3d = 0.070
     else:
-        raise ValueError("form_factor must be '18650' or 'pouch'")
+        raise ValueError("form_factor must be '18650', '21700' or 'pouch'")
     
     Nlayers, L = calculate_spiral(inner_diameter, outer_diameter, spacing)
 
@@ -148,6 +148,10 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
     # find index for center of tab location
     arc_spacing = L/ncell_total
 
+    if positive_tab == 'tesla_tabs' or negative_tab == 'tesla_tabs':
+        tesla_tabs = True
+        positive_tab = None
+        negative_tab = None
 
     import math
     project, net_arc_edges = ecm.make_spiral_net(math.floor(Nlayers/2),
@@ -222,8 +226,6 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
                                          length_3d,
                                          tesla_tabs)
         
-        # tab_widths = [int((i/360)*ncell_total) for i in tab_widths]
-
     return project, net_arc_edges
 
 def get_electrode_height(project):
