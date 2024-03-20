@@ -148,7 +148,7 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
     # find index for center of tab location
     arc_spacing = L/ncell_total
 
-    if positive_tab == 'tesla_tabs' or negative_tab == 'tesla_tabs':
+    if positive_tab == 'tesla' or negative_tab == 'tesla':
         tesla_tabs = True
         positive_tab = None
         negative_tab = None

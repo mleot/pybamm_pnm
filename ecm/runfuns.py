@@ -182,8 +182,9 @@ def get_experiment(row,capacity):
     elif row['experiment_type'] == 'Pulse':
         experiment = pybamm.Experiment(
                 [
-                    (f"Discharge at {row['rate']*capacity} A for 10 seconds (0.5 s period)"),
-                ]
+                    ("Rest for 1 second"),
+                    (f"Discharge at {row['rate']*capacity} A for 10 seconds"),
+                ], period='0.5 seconds'
         )
     elif row['experiment_type'] == 'Rest':
         experiment = pybamm.Experiment(
