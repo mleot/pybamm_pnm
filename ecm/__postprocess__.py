@@ -59,6 +59,16 @@ def get_saved_var_names():
     ]
     return saved_vars
 
+def get_animation_variable_pairs():
+    var_pairs = [
+        [1,3],
+        [2,3],
+        [4,5],
+        [3,6],
+        [15,19]
+    ]
+    return var_pairs
+
 
 def get_saved_var_units():
     units = [
@@ -567,6 +577,7 @@ def super_subplot(data, cases_left, cases_right, amp):
     ax = axes[2][1]
     stacked_variables(data, cases_right[0], amp, [18, 17, 16, 19], ax, 5)
     plt.tight_layout()
+    return fig
 
 
 def combined_subplot(
