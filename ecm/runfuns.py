@@ -50,7 +50,7 @@ def run_simulation_cylindrical(i, row):
     # get parameter values
     parameter_values = pybamm.ParameterValues(row['parameter_set'])
     parameter_values = set_electrode_porosity(parameter_values,row['anode porosity'],'negative')
-    parameter_values = set_particle_volumetric_capacity(parameter_values,row['particle capacity [mAh/cm3]'],'negative','')
+    parameter_values = set_particle_volumetric_capacity(parameter_values,row['particle capacity [mAh.cm-3]'],'negative','')
     parameter_values = set_areal_capacity(row, parameter_values)
     parameter_values.update(marquis_heat_transfer,check_already_exists=False)
     parameter_values.update(
@@ -165,10 +165,11 @@ def get_experiment(row,capacity):
             ], period='0.5 seconds'
         )
     elif row['experiment_type'] == 'Full Discharge':
+        steps = 1/row['rate']*3600/360
         experiment = pybamm.Experiment(
             [
-                (f"Discharge at {row['rate']*capacity} A for {1/row['rate']} hours")
-            ], period='1 second'
+                (f"Discharge at {row['rate']*capacity} A for {1/row['rate']*3600} seconds")
+            ], period=f'{steps} seconds'
         )
     elif row['experiment_type'] == 'Discharge DC':
         t = np.arange(0,11,0.001)
