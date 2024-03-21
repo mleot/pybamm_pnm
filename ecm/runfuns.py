@@ -164,6 +164,13 @@ def get_experiment(row,capacity):
                 (f"Discharge at {row['rate']*capacity} A for 10 seconds")
             ], period='0.5 seconds'
         )
+    elif row['experiment_type'] == 'SOC DCR':
+        experiment = pybamm.Experiment(
+            [
+                ('Discharge at 0.2 C for 30 minutes'),
+                (f"Discharge at {row['rate']*capacity} A for 30 seconds")
+            ], period='0.5 seconds'
+        )
     elif row['experiment_type'] == 'Full Discharge':
         steps = 1/row['rate']*3600/360
         experiment = pybamm.Experiment(
