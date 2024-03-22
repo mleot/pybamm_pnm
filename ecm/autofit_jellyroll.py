@@ -216,7 +216,8 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
         raise ValueError("If one tab is specified, both must be specified")
     else:
         return project, net_arc_edges
-
+    wrk = op.Workspace()
+    wrk.clear()
     project, net_arc_edges = ecm.make_spiral_net(math.floor(Nlayers/2),
                                          dtheta,
                                          spacing,

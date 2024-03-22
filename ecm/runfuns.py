@@ -53,12 +53,16 @@ def run_simulation_cylindrical(i, row):
     parameter_values = set_particle_volumetric_capacity(parameter_values,row['particle capacity [mAh.cm-3]'],'negative','')
     parameter_values = set_areal_capacity(row, parameter_values)
     parameter_values.update(marquis_heat_transfer,check_already_exists=False)
+    graphite_entropic_change = pybamm.ParameterValues('Ai2020')['Negative electrode OCP entropic change [V.K-1]']
+    NMC_entropic_change = pybamm.ParameterValues('ORegan2022')['Positive electrode OCP entropic change [V.K-1]']
     parameter_values.update(
         {
             "Ambient temperature [K]": row['ambient temperature [C]']+273.15,
             "Initial temperature [K]": row['ambient temperature [C]']+273.15,
             'Upper voltage cut-off [V]': 4.8,
             'Lower voltage cut-off [V]': 2.0,
+            'Negative electrode OCP entropic change [V.K-1]': graphite_entropic_change,
+            'Positive electrode OCP entropic change [V.K-1]': NMC_entropic_change,
         }
     )
     parameter_values = pybamm.ParameterValues(parameter_values)

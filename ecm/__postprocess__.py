@@ -4,6 +4,9 @@ Created on Wed Mar  4 13:32:23 2020
 
 @author: Tom
 """
+# import matplotlib
+# matplotlib.use('TkAgg')
+
 import os
 from scipy import io
 import numpy as np
@@ -17,6 +20,7 @@ from matplotlib import gridspec
 import matplotlib.ticker as mtick
 from string import ascii_lowercase as abc
 import ecm
+
 
 
 prop_cycle = plt.rcParams["axes.prop_cycle"]
@@ -684,6 +688,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
             time,
             weights,
         ),
+        save_count=20,
     )
     Writer = animation.writers["ffmpeg"]
     writer = Writer(fps=1, metadata=dict(artist="Tom Tranter"), bitrate=-1)

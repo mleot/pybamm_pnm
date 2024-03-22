@@ -61,6 +61,7 @@ def output_variables():
     return [
         "Terminal voltage [V]",
         "Volume-averaged cell temperature [K]",
+        "X-averaged cell temperature [K]",
         "Current collector current density [A.m-2]",
         "X-averaged negative electrode extent of lithiation",
         "X-averaged positive electrode extent of lithiation",
@@ -80,7 +81,7 @@ def output_variables():
         'Volume-averaged Ohmic heating [W.m-3]',
         'Negative current collector temperature [C]',
         'Positive current collector temperature [C]',
-        # 'X-averaged cell temperature [C]',
+        'X-averaged cell temperature [C]',
         'Volume-averaged cell temperature [C]',
         'X-averaged negative electrode temperature [C]',
         'X-averaged separator temperature [C]',
