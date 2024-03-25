@@ -189,7 +189,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
                 project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
             )
             # Interpolate the node temperatures for the SPMs
-            print(f'before: (Max)[{np.round(spm_temperature.max(),2)}, (Min)[{np.round(spm_temperature.min(),2)}]]')
+            # print(f'before: (Max)[{np.round(spm_temperature.max(),2)}, (Min)[{np.round(spm_temperature.min(),2)}]]')
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
@@ -251,14 +251,14 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             Q[res_Ts] += Q_tot
             # print('Q mean', Q.mean())
             # print('volume sum', net["pore.volume"].sum())
-            print('total W heat produced pre-solve', Q.sum() * net["pore.volume"].sum())
+            # print('total W heat produced pre-solve', Q.sum() * net["pore.volume"].sum())
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
             ecm.run_step_transient(
                 project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
             )
             # Interpolate the node temperatures for the SPMs
-            print(f'before: (Max)[{np.round(spm_temperature.max(),5)}, (Min)[{np.round(spm_temperature.min(),5)}]')
+            # print(f'before: (Max)[{np.round(spm_temperature.max(),5)}, (Min)[{np.round(spm_temperature.min(),5)}]')
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             ###################################################################
             if vlims_ok:
