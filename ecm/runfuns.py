@@ -73,6 +73,8 @@ def run_simulation_cylindrical(i, row):
     else:
         raise ValueError("form_factor must be '18650' or 'pouch'")
 
+    # parameter_values.update({'Electrode height [m]': 0.00065})
+    # parameter_values.update({'Electrode width [m]': 0.065})
     project, arc_edges = get_spiral_params(parameter_values)
 
     # ecm.plot_topology(project.network)
@@ -86,16 +88,15 @@ def run_simulation_cylindrical(i, row):
     # get the experiment
     experiment = get_experiment(row,estimated_capacity)
 
-    parameter_values.update({'Electrode width [m]': 0.065})
 
-    trans_kwargs = {'t_slice':10,'t_precision':1}
+    # trans_kwargs = {'t_slice':10,'t_precision':1}
 
     # Run simulation
     project, output = ecm.run_simulation_lp(parameter_values=parameter_values,
                                             experiment=experiment,
                                             initial_soc=None,
                                             project=project,
-                                            **trans_kwargs)
+                                            )
 
 
 
@@ -166,7 +167,7 @@ def get_experiment(row,capacity):
             [
                 ('Rest for 1 second'),
                 (f"Discharge at {row['rate']*capacity} A for 10 seconds")
-            ], period='0.5 seconds'
+            ], period='0.05 seconds'
         )
     elif row['experiment_type'] == 'SOC DCR':
         experiment = pybamm.Experiment(
@@ -176,10 +177,11 @@ def get_experiment(row,capacity):
             ], period='0.5 seconds'
         )
     elif row['experiment_type'] == 'Full Discharge':
-        steps = 1/row['rate']*3600/360
+        seconds_Iapp = np.round(1/row['rate']*3600,5)
+        steps = seconds_Iapp/360
         experiment = pybamm.Experiment(
             [
-                (f"Discharge at {row['rate']*capacity} A for {1/row['rate']*3600} seconds")
+                (f"Discharge at {row['rate']*np.round(capacity,5)} A for {seconds_Iapp} seconds")
             ], period=f'{steps} seconds'
         )
     elif row['experiment_type'] == 'Discharge DC':
@@ -224,6 +226,12 @@ def get_experiment(row,capacity):
                 (f"Discharge at {0.2*capacity} A for 30 minutes (10 s period)", f"Discharge at {2*capacity} A for 30 seconds or until 2.5V (1 s period)", f"Charge at {0.2*capacity} A for 5 minutes (1 s period)"),
                 (f"Discharge at {0.2*capacity} A for 30 minutes (10 s period)", f"Discharge at {2*capacity} A for 30 seconds or until 2.5V (1 s period)", f"Charge at {0.2*capacity} A for 5 minutes (1 s period)"),
                 (f"Discharge at {0.2*capacity} A for 30 minutes (10 s period)", f"Discharge at {2*capacity} A for 30 seconds or until 2.5V (1 s period)", f"Charge at {0.2*capacity} A for 5 minutes (1 s period)"),
+            ]
+        )
+    elif row['experiment_type'] == 'Rest 1 hour':
+        experiment = pybamm.Experiment(
+            [
+                (f"Rest for 1 hour (30 second period)"),
             ]
         )
     else:

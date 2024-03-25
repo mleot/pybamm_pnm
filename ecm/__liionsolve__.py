@@ -38,8 +38,8 @@ def do_heating():
 
 def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwargs):
     ###########################################################################
-    kwargs.setdefault('t_slice', 10)
-    kwargs.setdefault('t_precision', 12)
+    kwargs.setdefault('t_slice', 4)
+    kwargs.setdefault('t_precision', 1)
     kwargs.setdefault('disable', True)
     kwargs.setdefault('max_workers', 1)
     ###########################################################################
@@ -131,6 +131,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         "Electrode height [m]": e_heights,
         "Input temperature [K]": spm_temperature
     }
+    # print('min e height', e_heights.min(), 'max e height', e_heights.max())
     ###########################################################################
     # Initialisation
     experiment_init = pybamm.Experiment(
@@ -152,7 +153,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         initial_soc=initial_soc,
         setup_only=True,
     )
-    Qvar = "Volume-averaged total heating [W.m-3]"
+    # Qvar = "Volume-averaged total heating [W.m-3]"
+    Qvar = "X-averaged total heating [W.m-3]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     lp.logger.notice("Starting initial step solve")
     vlims_ok = True
@@ -169,7 +171,9 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
+            # print('Qtot sum', Q_tot.sum())
             Q = get_cc_power_loss(net, netlist)
+            # print('cc power loss sum', Q.sum())
             # print(Q_tot)
             # print(Q)
             # To do - Get cc heat from netlist
@@ -185,6 +189,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
                 project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
             )
             # Interpolate the node temperatures for the SPMs
+            print(f'before: (Max)[{np.round(spm_temperature.max(),2)}, (Min)[{np.round(spm_temperature.min(),2)}]]')
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
@@ -218,7 +223,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         initial_soc=initial_soc,
         setup_only=True,
     )
-    Qvar = "Volume-averaged total heating [W.m-3]"
+    # Qvar = "Volume-averaged total heating [W.m-3]"
+    Qvar = "X-averaged total heating [W.m-3]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     lp.logger.notice("Starting step solve")
     vlims_ok = True
@@ -234,19 +240,25 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
+            # print('Qtot sum', Q_tot.sum())
             Q = get_cc_power_loss(net, netlist)
+            # print('cc power loss sum', Q.sum())
             # To do - Get cc heat from netlist
             # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
             # Q_ohm_cc /= net["throat.volume"][res_Ts]
             # key = "Volume-averaged Ohmic heating CC [W.m-3]"
             # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
             Q[res_Ts] += Q_tot
+            # print('Q mean', Q.mean())
+            # print('volume sum', net["pore.volume"].sum())
+            print('total W heat produced pre-solve', Q.sum() * net["pore.volume"].sum())
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
             ecm.run_step_transient(
                 project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
             )
             # Interpolate the node temperatures for the SPMs
+            print(f'before: (Max)[{np.round(spm_temperature.max(),5)}, (Min)[{np.round(spm_temperature.min(),5)}]')
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             ###################################################################
             if vlims_ok:

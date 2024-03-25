@@ -50,6 +50,7 @@ def adjust_parameters(parameter_values, I_typical):
             # "Typical current [A]": I_typical,
             "Current function [A]": current_function,
             "Electrode height [m]": "[input]",
+            # "Cell volume [m3]": "[input]",
         }
     )
     parameter_values.update({"Current": "[input]"}, check_already_exists=False)
@@ -76,6 +77,7 @@ def output_variables():
         "Volume-averaged irreversible electrochemical heating [W.m-3]",
         "X-averaged irreversible electrochemical heating [W.m-3]",
         "X-averaged reversible heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
         "Volume-averaged reversible heating [W.m-3]",
         'X-averaged Ohmic heating [W.m-3]',
         'Volume-averaged Ohmic heating [W.m-3]',
@@ -85,7 +87,11 @@ def output_variables():
         'Volume-averaged cell temperature [C]',
         'X-averaged negative electrode temperature [C]',
         'X-averaged separator temperature [C]',
-        'X-averaged positive electrode temperature [C]'
+        'X-averaged positive electrode temperature [C]',
+        "Total heating [W]",
+        "Total heating per unit electrode-pair area [W.m-2]",
+        "Volume-averaged total heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
     ]
 
 
@@ -242,13 +248,18 @@ def apply_heat_source_lp(project, Q):
     # The SPMs are defined at the throat but the pores represent the
     # Actual electrode volume so need to interpolate for heat sources
     phys = project.physics()["phys_01"]
-    phys["throat.heat_source"] = Q
+    phys["throat.heat_source"] = Q * 2
     phys.add_model(
         propname="pore.heat_source",
         model=op.models.misc.from_neighbor_throats,
         prop="throat.heat_source",
         mode="mean",
     )
+
+    # phys['pore.heat_source'] = phys.interpolate_data(propname='throat.heat_source')
+
+    # print('pore heat', phys['pore.heat_source'].sum())
+    # print('throat heat', phys['throat.heat_source'].sum())
 
 
 def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwargs):
@@ -257,7 +268,10 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwa
     phase = project.phases()["phase_01"]
     phys = project.physics()["phys_01"]
     phys["pore.A1"] = 0.0
-    Q_spm = phys["pore.heat_source"] * net["pore.volume"]
+    Q_spm = phys["pore.heat_source"] * net["pore.volume"] * len(net['pore.volume'])
+    # print(Q_spm.max(), Q_spm.min())
+    # print('total W heat produced',Q_spm.sum())
+    # print('total pore volume', net["pore.volume"].sum())
     # Q_cc = net["pore.cc_power_loss"]
     # print(
     #     "Q_spm",

@@ -135,6 +135,8 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
     else:
         raise ValueError("form_factor must be '18650', '21700' or 'pouch'")
     
+    # parameter_values.update({'Electrode height [m]': length3d})
+    
     Nlayers, L = calculate_spiral(inner_diameter, outer_diameter, spacing)
 
     # nominal_area = parameter_values['Electrode height [m]'] * parameter_values['Electrode width [m]']
