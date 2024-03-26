@@ -65,6 +65,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     # print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     # Take I_app from first command of the experiment
     proto = lp.generate_protocol_from_experiment(experiment)
+
     I_app = proto[0]
     I_typical = I_app / Nspm
 
@@ -116,7 +117,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     ###########################################################################
     # New Liionpack code                                                      #
     ###########################################################################
-    dim_time_step = 10
+    dim_time_step = experiment.period
+    print(dim_time_step)
     neg_econd, pos_econd = ecm.cc_cond(project, parameter_values)
     Rs = 1e-2  # series resistance
     Ri = 90  # initial guess for internal resistance
@@ -154,7 +156,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         setup_only=True,
     )
     # Qvar = "Volume-averaged total heating [W.m-3]"
-    Qvar = "X-averaged total heating [W.m-3]"
+    Qvar = "Total heating [W]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     lp.logger.notice("Starting initial step solve")
     vlims_ok = True
@@ -224,7 +226,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         setup_only=True,
     )
     # Qvar = "Volume-averaged total heating [W.m-3]"
-    Qvar = "X-averaged total heating [W.m-3]"
+    Qvar = "Total heating [W]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     lp.logger.notice("Starting step solve")
     vlims_ok = True
