@@ -192,6 +192,7 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     rPs = geo["pore.arc_index"][net["throat.conns"]]
     sameR = rPs[:, 0] == rPs[:, 1]
     geo["throat.area"] = spacing * length_3d
+    geo['throat.xarea'] = length_3d * geo['throat.radial_position'] * drad
     geo["throat.electrode_height"] = geo["throat.radial_position"] * drad
     geo["throat.area"][sameR] = geo["throat.electrode_height"][sameR] * length_3d
     geo["throat.volume"] = 0.0
@@ -235,7 +236,7 @@ def apply_heat_source(project, Q):
     phys = project.physics()["phys_01"]
     spm_Ts = net.throats("spm_resistor")
     phys["throat.heat_source"] = 0.0
-    phys["throat.heat_source"][spm_Ts] = Q
+    phys["throat.heat_source"][spm_Ts] = Q * 2
     phys.add_model(
         propname="pore.heat_source",
         model=op.models.misc.from_neighbor_throats,
@@ -248,7 +249,7 @@ def apply_heat_source_lp(project, Q):
     # The SPMs are defined at the throat but the pores represent the
     # Actual electrode volume so need to interpolate for heat sources
     phys = project.physics()["phys_01"]
-    phys["throat.heat_source"] = Q * 2
+    phys["throat.heat_source"] = Q 
     phys.add_model(
         propname="pore.heat_source",
         model=op.models.misc.from_neighbor_throats,
@@ -268,7 +269,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwa
     phase = project.phases()["phase_01"]
     phys = project.physics()["phys_01"]
     phys["pore.A1"] = 0.0
-    Q_spm = phys["pore.heat_source"] * net["pore.volume"] * len(net['pore.volume'])
+    Q_spm = phys["pore.heat_source"] #* net["pore.volume"] #* len(net['pore.volume'])
     # print(Q_spm.max(), Q_spm.min())
     # print('total W heat produced',Q_spm.sum())
     # print('total pore volume', net["pore.volume"].sum())
@@ -287,6 +288,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwa
     phys["pore.A2"] = (Q_spm) / (cp * rho)
     # Heat Source
     T0 = phase["pore.temperature"]
+    print(T0.max(), T0.min())
     t_step = float(time_step / kwargs['t_slice'])
     phys.add_model(
         "pore.source",
@@ -301,15 +303,17 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwa
         phase=phase,
         conductance="throat.conductance",
         quantity="pore.temperature",
+        pore_volume="pore.volume",
         t_initial=0.0,
         t_final=time_step,
         t_step=t_step,
-        t_output=t_step,
+        t_output=time_step,
         t_tolerance=1e-9,
         t_precision=kwargs['t_precision'],
         rxn_tolerance=1e-9,
         t_scheme="implicit",
     )
+    print(phase['throat.conductance'].max(),phase['throat.conductance'].min())
     alg.set_IC(values=T0)
     bulk_Ps = net.pores("free_stream", mode="not")
     alg.set_source("pore.source", bulk_Ps)
@@ -321,6 +325,9 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwa
         Ps = net.pores("free_stream")
     alg.set_value_BC(Ps, values=BC_value)
     alg.run()
+
+    # plt.plot(alg["pore.temperature"])
+    # plt.show()
     # print(
     #     "Max Temp",
     #     np.around(alg["pore.temperature"].max(), 3),
@@ -560,10 +567,10 @@ def lump_thermal_props(param):
         for j, l in enumerate(layers):
             all_props[i][j] = param[l + " " + prop]
     # Break them up
-    lens = all_props[:, 0]
-    rhos = all_props[:, 1]
-    Cps = all_props[:, 2]
-    ks = all_props[:, 3]
+    lens = all_props[0,:]
+    rhos = all_props[1,:]
+    Cps = all_props[2,:]
+    ks = all_props[3,:]
     # Lumped props
     rho_lump = np.sum(lens * rhos) / np.sum(lens)
     Cp_lump = np.sum(lens * rhos * Cps) / np.sum(lens * rhos)
