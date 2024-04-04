@@ -132,6 +132,10 @@ def get_spiral_params(parameter_values, form_factor='18650', positive_tab=None, 
         inner_diameter = 0.0035
         outer_diameter = 0.021
         length_3d = 0.070
+    elif form_factor == '4680':
+        inner_diameter = 0.0035
+        outer_diameter = 0.046
+        length_3d = 0.080
     else:
         raise ValueError("form_factor must be '18650', '21700' or 'pouch'")
     
