@@ -9,6 +9,7 @@ import time as ticker
 import openpnm as op
 import liionpack as lp
 from tqdm import tqdm
+import time
 import matplotlib.pyplot as plt
 
 # import configparser
@@ -38,15 +39,16 @@ def do_heating():
 
 def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwargs):
     ###########################################################################
-    kwargs.setdefault('t_slice', 4)
-    kwargs.setdefault('t_precision', 1)
+    kwargs.setdefault('t_slice', 10)
+    kwargs.setdefault('t_precision', 12)
     kwargs.setdefault('disable', True)
     kwargs.setdefault('max_workers', 1)
+    kwargs.setdefault('timeit',False)
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
     st = ticker.time()
-    max_workers = kwargs['max_workers']
+    max_workers = kwargs.pop('max_workers')
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
@@ -118,7 +120,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     # New Liionpack code                                                      #
     ###########################################################################
     dim_time_step = experiment.period
-    print(dim_time_step)
+    # print(dim_time_step)
     neg_econd, pos_econd = ecm.cc_cond(project, parameter_values)
     Rs = 1e-2  # series resistance
     Ri = 90  # initial guess for internal resistance
@@ -169,7 +171,10 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         while step < manager.Nsteps and vlims_ok:
             ###################################################################
             updated_inputs = {"Input temperature [K]": spm_temperature}
+            # start_time = time.time()
             vlims_ok = manager._step(step, updated_inputs)
+            # end_time = time.time()
+            # spm_solve_time = end_time - start_time
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
@@ -187,9 +192,18 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             Q[res_Ts] += Q_tot
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
+            # start_time = time.time()
+            if not vlims_ok:
+                break
             ecm.run_step_transient(
                 project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
             )
+            # end_time = time.time()
+            # heat_solve_time = end_time - start_time
+            # if kwargs['timeit']:
+            #     total_time = spm_solve_time + heat_solve_time
+            #     percent_spm_time = 100 * spm_solve_time / total_time
+            #     print(f'Solving SPMs took {spm_solve_time:.2f}s ({percent_spm_time:.2f}%)')
             # Interpolate the node temperatures for the SPMs
             # print(f'before: (Max)[{np.round(spm_temperature.max(),2)}, (Min)[{np.round(spm_temperature.min(),2)}]]')
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
@@ -238,7 +252,10 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         while step < manager.Nsteps and vlims_ok:
             ###################################################################
             updated_inputs = {"Input temperature [K]": spm_temperature}
+            start_time = time.time()
             vlims_ok = manager._step(step, updated_inputs)
+            end_time = time.time()
+            spm_solve_time = end_time - start_time
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
@@ -256,10 +273,18 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             # print('total W heat produced pre-solve', Q.sum() * net["pore.volume"].sum())
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
+            start_time = time.time()
+            if not vlims_ok:
+                break
             ecm.run_step_transient(
                 project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
             )
-            # Interpolate the node temperatures for the SPMs
+            end_time = time.time()
+            heat_solve_time = end_time - start_time
+            if kwargs['timeit']:
+                total_time = spm_solve_time + heat_solve_time
+                percent_spm_time = 100 * spm_solve_time / total_time
+                pbar.print(f'Solving SPMs took {spm_solve_time:.2f}s ({percent_spm_time:.2f}%)')# Interpolate the node temperatures for the SPMs
             # print(f'before: (Max)[{np.round(spm_temperature.max(),5)}, (Min)[{np.round(spm_temperature.min(),5)}]')
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             ###################################################################
