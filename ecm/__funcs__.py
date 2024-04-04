@@ -288,7 +288,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwa
     phys["pore.A2"] = (Q_spm) / (cp * rho)
     # Heat Source
     T0 = phase["pore.temperature"]
-    print(T0.max(), T0.min())
+    # print(T0.max(), T0.min())
     t_step = float(time_step / kwargs['t_slice'])
     phys.add_model(
         "pore.source",
@@ -313,7 +313,8 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwa
         rxn_tolerance=1e-9,
         t_scheme="implicit",
     )
-    print(phase['throat.conductance'].max(),phase['throat.conductance'].min())
+    alg.settings['cache_A'] = False
+    # print(phase['throat.conductance'].max(),phase['throat.conductance'].min())
     alg.set_IC(values=T0)
     bulk_Ps = net.pores("free_stream", mode="not")
     alg.set_source("pore.source", bulk_Ps)
