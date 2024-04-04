@@ -36,6 +36,7 @@ def get_saved_var_names():
         "Time [s]",
         "Terminal voltage [V]",
         "Volume-averaged cell temperature [K]",
+        "X-averaged cell temperature [K]",
         "Current collector current density [A.m-2]",
         "X-averaged negative electrode extent of lithiation",
         "X-averaged positive electrode extent of lithiation",
@@ -48,28 +49,35 @@ def get_saved_var_names():
         "X-averaged positive particle surface concentration [mol.m-3]",
         "Battery open-circuit voltage [V]",
         "Volume-averaged irreversible electrochemical heating [W.m-3]",
-        # "X-averaged irreversible electrochemical heating [W.m-3]",
-        # "X-averaged reversible heating [W.m-3]",
+        "X-averaged irreversible electrochemical heating [W.m-3]",
+        "X-averaged reversible heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
         "Volume-averaged reversible heating [W.m-3]",
-        # 'X-averaged Ohmic heating [W.m-3]',
+        'X-averaged Ohmic heating [W.m-3]',
         'Volume-averaged Ohmic heating [W.m-3]',
         'Negative current collector temperature [C]',
         'Positive current collector temperature [C]',
-        # 'X-averaged cell temperature [C]',
+        'X-averaged cell temperature [C]',
         'Volume-averaged cell temperature [C]',
         'X-averaged negative electrode temperature [C]',
         'X-averaged separator temperature [C]',
-        'X-averaged positive electrode temperature [C]'
+        'X-averaged positive electrode temperature [C]',
+        "Total heating [W]",
+        "Total heating per unit electrode-pair area [W.m-2]",
+        "Volume-averaged total heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
     ]
     return saved_vars
 
 def get_animation_variable_pairs():
     var_pairs = [
-        [1,3],
-        [2,3],
-        [4,5],
-        [3,6],
-        [15,19]
+        ["Terminal voltage [V]","Current collector current density [A.m-2]",],
+        ["X-averaged negative electrode extent of lithiation","X-averaged positive electrode extent of lithiation"],
+        ["Volume-averaged total heating [W.m-3]","Current collector current density [A.m-2]"],
+        ['Volume-averaged cell temperature [C]',"Volume-averaged total heating [W.m-3]"],
+        ["X-averaged battery concentration overpotential [V]","X-averaged battery electrolyte ohmic losses [V]"],
+        ["X-averaged battery reaction overpotential [V]","Volume-averaged irreversible electrochemical heating [W.m-3]"],
+        ['Volume-averaged Ohmic heating [W.m-3]',"Current collector current density [A.m-2]"],
     ]
     return var_pairs
 
@@ -139,6 +147,7 @@ def load_and_amalgamate(save_root, var_name):
 
 
 def format_label(i):
+    return i
     saved_vars = get_saved_var_names()
     units = get_saved_var_units()
     label = saved_vars[i]
@@ -194,7 +203,7 @@ def load_data(filepath):
         amp_folder = os.path.join(filepath, str(amp) + "A")
         data[amp] = {}
         for vi, v in enumerate(variables):
-            data[amp][vi] = {}
+            data[amp][v] = {}
             temp = load_and_amalgamate(amp_folder, v)
             if temp is not None:
                 if vi == 0:
@@ -203,17 +212,17 @@ def load_data(filepath):
                         print("Nans removed from", amp_folder)
                 if np.any(check_nans):
                     temp = temp[~check_nans, :]
-                data[amp][vi]["data"] = temp
-                data[amp][vi]['name'] = v
+                data[amp][v]["data"] = temp
+                data[amp][v]['name'] = v
                 means = np.zeros(temp.shape[0])
                 for t in range(temp.shape[0]):
                     (mean, std_dev) = weighted_avg_and_std(temp[t, :], weights)
                     means[t] = mean
-                data[amp][vi]["mean"] = means
-                data[amp][vi]["min"] = np.min(temp, axis=1)
-                data[amp][vi]["max"] = np.max(temp, axis=1)
+                data[amp][v]["mean"] = means
+                data[amp][v]["min"] = np.min(temp, axis=1)
+                data[amp][v]["max"] = np.max(temp, axis=1)
         if temp is not None:
-            t_hrs = data[amp][0]["data"][:, 0]
+            t_hrs = data[amp]['Time [s]']["data"][:, 0]/3600
             cap = t_hrs * amp
             data[amp]["capacity"] = cap
             data[amp]["time"] = t_hrs
@@ -287,7 +296,7 @@ def min_mean_max_subplot(
     return ax
 
 
-def chargeogram(data, case_list, amp_list, group="neg",variable_id=0,case_suffix="",sharey=False):
+def chargeogram(data, case_list, amp_list, group="neg",variable_id='Terminal voltage [V]',case_suffix="",sharey=False):
     # wrk.clear()
     var_name=None
     nrows = len(case_list)
@@ -424,10 +433,10 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     net = data[case]["network"]
     spm_vol = net["throat.volume"][net["throat.spm_resistor"]]
     # To do - make this much more robust = replace integers with key
-    Q_ohm = data[case][amp][19]["data"]
-    Q_irr = data[case][amp][14]["data"]
-    Q_rev = data[case][amp][17]["data"]
-    Q_ohm_cc = data[case][amp][10]["data"]
+    Q_ohm = data[case][amp][var_list[0]]["data"]
+    Q_irr = data[case][amp][var_list[1]]["data"]
+    Q_rev = data[case][amp][var_list[2]]["data"]
+    Q_ohm_cc = data[case][amp][var_list[3]]["data"]
     nt, nspm = Q_ohm.shape
     spm_vol_t = np.tile(spm_vol[:, np.newaxis], nt).T
     sum_Q_ohm = np.sum(Q_ohm * spm_vol_t, axis=1)
@@ -438,12 +447,12 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     base = np.zeros(len(sum_Q_ohm))
     cols = cmap(np.linspace(0.1, 0.9, 4))
     labels = []
-    for i in [19, 14, 17, 10]:
-        text = format_label(i).strip("X-averaged").strip("[W.m-3]")
+    for i in var_list:
+        text = format_label(i).strip("Volume-averaged").strip("[W.m-3]")
         labels.append(text.lstrip().rstrip().capitalize())
     for si, source in enumerate([sum_Q_rev, sum_Q_irr, sum_Q_ohm, sum_Q_ohm_cc]):
         ax.fill_between(
-            data[case][amp][0]["mean"],
+            data[case][amp]['Time [s]']["mean"],
             base,
             base + source,
             color=cols[si],
@@ -494,7 +503,7 @@ def super_subplot(data, cases_left, cases_right, amp):
         sharey=False,
     )
     # Top row is current density
-    var = 3
+    var = "Current collector current density [A.m-2]"
     row_num = 0
     ax = axes[row_num][0]
     ncolor = len(cases_left)
@@ -535,7 +544,7 @@ def super_subplot(data, cases_left, cases_right, amp):
     ax.grid()
     add_figure_label(ax, 1)
     # 2nd row is temperature
-    var = 22
+    var = 'Volume-averaged cell temperature [C]'
     row_num = 1
     ax = axes[row_num][0]
     ncolor = len(cases_left)
@@ -577,9 +586,15 @@ def super_subplot(data, cases_left, cases_right, amp):
     add_figure_label(ax, 3)
     plt.ticklabel_format(axis="y", style="sci")
     ax = axes[2][0]
-    stacked_variables(data, cases_left[0], amp, [18, 17, 16, 19], ax, 4)
+    stacked_var_names = [
+        'Volume-averaged Ohmic heating [W.m-3]',
+        "Volume-averaged reversible heating [W.m-3]",
+        "Volume-averaged irreversible electrochemical heating [W.m-3]",
+        "Volume-averaged total heating [W.m-3]",
+        ]
+    stacked_variables(data, cases_left[0], amp, stacked_var_names, ax, 4)
     ax = axes[2][1]
-    stacked_variables(data, cases_right[0], amp, [18, 17, 16, 19], ax, 5)
+    stacked_variables(data, cases_right[0], amp, stacked_var_names, ax, 5)
     plt.tight_layout()
     return fig
 
@@ -668,7 +683,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
     time_var = "Time [s]"
-    time = data[case][amp][0]["mean"]
+    time = data[case][amp]['Time [s]']["mean"]
     vars2plot = {}
     vars2plot[plot_left] = data[case][amp][variables[0]]["data"]
     vars2plot[plot_right] = data[case][amp][variables[1]]["data"]
@@ -691,7 +706,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
         save_count=20,
     )
     Writer = animation.writers["ffmpeg"]
-    writer = Writer(fps=1, metadata=dict(artist="Tom Tranter"), bitrate=-1)
+    writer = Writer(fps=30, metadata=dict(artist="Tom Tranter"), bitrate=-1)
     if ".mp4" not in filename:
         filename = filename + ".mp4"
     func_ani.save(filename, writer=writer, dpi=300)
@@ -746,7 +761,7 @@ def update_animation_subplot(
     side="left",
     global_range=True,
 ):
-    print("Updating animation " + side + " frame", t)
+    # print("Updating animation " + side + " frame", t)
     if side == "left":
         ax1 = fig.axes[0]
         ax1c = fig.axes[1]
