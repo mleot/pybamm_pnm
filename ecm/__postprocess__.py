@@ -703,7 +703,8 @@ def animate_data4(data, case, amp, variables=None, filename=None):
             time,
             weights,
         ),
-        save_count=20,
+        save_count=None,
+        cache_frame_data=True
     )
     Writer = animation.writers["ffmpeg"]
     writer = Writer(fps=30, metadata=dict(artist="Tom Tranter"), bitrate=-1)
