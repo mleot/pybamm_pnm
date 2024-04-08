@@ -44,6 +44,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     kwargs.setdefault('disable', True)
     kwargs.setdefault('max_workers', 1)
     kwargs.setdefault('timeit',False)
+    kwargs.setdefault('model','SPMe')
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
@@ -144,11 +145,15 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         ],
         period="1 second",
     )
+    if kwargs['model'] == 'SPMe':
+        sim_func = lp.thermal_external
+    elif kwargs['model'] == 'DFN':
+        sim_func = lp.thermal_external_DFN
     # Solve the pack
     manager = lp.CasadiManager()
     manager.solve(
         netlist=netlist,
-        sim_func=lp.thermal_external,
+        sim_func=sim_func,
         parameter_values=parameter_values,
         experiment=experiment_init,
         output_variables=output_variables,
@@ -230,7 +235,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     manager = lp.CasadiManager()
     manager.solve(
         netlist=netlist,
-        sim_func=lp.thermal_external,
+        sim_func=sim_func,
         parameter_values=parameter_values,
         experiment=experiment,
         output_variables=output_variables,

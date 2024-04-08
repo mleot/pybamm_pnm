@@ -468,7 +468,7 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     return ax
 
 
-def plot_resistors(net, throats, color, ax):
+def plot_resistors(net, throats, color, ax,resistors=True):
     conns = net["throat.conns"][throats]
     coords = net["pore.coords"]
     v = coords[conns[:, 1]] - coords[conns[:, 0]]
@@ -477,6 +477,8 @@ def plot_resistors(net, throats, color, ax):
     zigzag = np.array(
         [0, 0, 0, 0, 0, 0, 1, -1, -1, 1, 1, -1, -1, 1, 1, -1, -1, 1, 0, 0, 0, 0, 0, 0]
     )
+    if not resistors:
+        zigzag = zigzag / 100
     segs = len(zigzag)
     p_start = coords[conns[:, 0]]
     x_all = [p_start[:, 0]]
