@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecm"
+description = "Equivalent Circuit Model for battery modelling using PyBaMM"
+dynamic = ["version"]
+authors = [
+    {name = "Tom Tranter", email = "t.g.tranter@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "numba",
+    "liionpack>=0.3.8",
+    "pybamm>=23.9",
+    "openpnm==2.8.2",
+    "ffmpeg-python",
+    "ipywidgets"
+]
+
+[project.urls]
+Documentation = "https://ecm.readthedocs.io/en/latest/"
+Source = "https://github.com/TomTranter/pybamm_pnm"
+Tracker = "https://github.com/TomTranter/pybamm_pnm/issues"
+
+[tool.setuptools_scm]
+write_to = "ecm/_version.py"
