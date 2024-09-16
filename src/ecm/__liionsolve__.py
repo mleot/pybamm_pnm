@@ -9,6 +9,7 @@ import time as ticker
 import openpnm as op
 import liionpack as lp
 from tqdm import tqdm
+import time
 import matplotlib.pyplot as plt
 
 # import configparser
@@ -40,11 +41,15 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     ###########################################################################
     kwargs.setdefault('t_slice', 10)
     kwargs.setdefault('t_precision', 12)
+    kwargs.setdefault('disable', True)
+    kwargs.setdefault('max_workers', 1)
+    kwargs.setdefault('timeit',False)
+    kwargs.setdefault('model','SPMe')
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
     st = ticker.time()
-    max_workers = int(os.cpu_count() / 2)
+    max_workers = kwargs.pop('max_workers')
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
@@ -63,6 +68,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     # print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     # Take I_app from first command of the experiment
     proto = lp.generate_protocol_from_experiment(experiment)
+
     I_app = proto[0]
     I_typical = I_app / Nspm
 
@@ -114,7 +120,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     ###########################################################################
     # New Liionpack code                                                      #
     ###########################################################################
-    dim_time_step = 10
+    dim_time_step = experiment.period
+    # print(dim_time_step)
     neg_econd, pos_econd = ecm.cc_cond(project, parameter_values)
     Rs = 1e-2  # series resistance
     Ri = 90  # initial guess for internal resistance
@@ -129,6 +136,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         "Electrode height [m]": e_heights,
         "Input temperature [K]": spm_temperature
     }
+    # print('min e height', e_heights.min(), 'max e height', e_heights.max())
     ###########################################################################
     # Initialisation
     experiment_init = pybamm.Experiment(
@@ -137,11 +145,15 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         ],
         period="1 second",
     )
+    if kwargs['model'] == 'SPMe':
+        sim_func = lp.thermal_external
+    elif kwargs['model'] == 'DFN':
+        sim_func = lp.thermal_external_DFN
     # Solve the pack
     manager = lp.CasadiManager()
     manager.solve(
         netlist=netlist,
-        sim_func=lp.thermal_external,
+        sim_func=sim_func,
         parameter_values=parameter_values,
         experiment=experiment_init,
         output_variables=output_variables,
@@ -150,46 +162,63 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         initial_soc=initial_soc,
         setup_only=True,
     )
-    Qvar = "Volume-averaged total heating [W.m-3]"
+    # Qvar = "Volume-averaged total heating [W.m-3]"
+    Qvar = "Total heating [W]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     lp.logger.notice("Starting initial step solve")
     vlims_ok = True
     tic = ticker.time()
     netlist["power_loss"] = 0.0
-    plt.figure()
-    with tqdm(total=manager.Nsteps, desc="Initialising simulation") as pbar:
+    # plt.figure()
+    with tqdm(total=manager.Nsteps, desc="Initialising simulation",leave=False,disable=kwargs['disable']) as pbar:
         step = 0
         # reset = True
         while step < manager.Nsteps and vlims_ok:
             ###################################################################
             updated_inputs = {"Input temperature [K]": spm_temperature}
+            # start_time = time.time()
             vlims_ok = manager._step(step, updated_inputs)
+            # end_time = time.time()
+            # spm_solve_time = end_time - start_time
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
+            # print('Qtot sum', Q_tot.sum())
             Q = get_cc_power_loss(net, netlist)
+            # print('cc power loss sum', Q.sum())
             # print(Q_tot)
             # print(Q)
             # To do - Get cc heat from netlist
             # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
             # Q_ohm_cc /= net["throat.volume"][res_Ts]
+            # manager.output[Qid_cc, step, :] = Q_ohm_cc
             # key = "Volume-averaged Ohmic heating CC [W.m-3]"
             # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
             Q[res_Ts] += Q_tot
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
+            # start_time = time.time()
+            if not vlims_ok:
+                break
             ecm.run_step_transient(
                 project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
             )
+            # end_time = time.time()
+            # heat_solve_time = end_time - start_time
+            # if kwargs['timeit']:
+            #     total_time = spm_solve_time + heat_solve_time
+            #     percent_spm_time = 100 * spm_solve_time / total_time
+            #     print(f'Solving SPMs took {spm_solve_time:.2f}s ({percent_spm_time:.2f}%)')
             # Interpolate the node temperatures for the SPMs
+            # print(f'before: (Max)[{np.round(spm_temperature.max(),2)}, (Min)[{np.round(spm_temperature.min(),2)}]]')
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
             step += 1
             pbar.update(1)
             temp_Ri = np.array(netlist.loc[manager.Ri_map].value)
-            plt.scatter(np.arange(len(temp_Ri)), temp_Ri, label=str(step))
-    plt.legend()
+            # plt.scatter(np.arange(len(temp_Ri)), temp_Ri, label=str(step))
+    # plt.legend()
     manager.step = step
     toc = ticker.time()
     lp.logger.notice("Initial step solve finished")
@@ -206,7 +235,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     manager = lp.CasadiManager()
     manager.solve(
         netlist=netlist,
-        sim_func=lp.thermal_external,
+        sim_func=sim_func,
         parameter_values=parameter_values,
         experiment=experiment,
         output_variables=output_variables,
@@ -215,35 +244,53 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         initial_soc=initial_soc,
         setup_only=True,
     )
-    Qvar = "Volume-averaged total heating [W.m-3]"
+    # Qvar = "Volume-averaged total heating [W.m-3]"
+    Qvar = "Total heating [W]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     lp.logger.notice("Starting step solve")
     vlims_ok = True
     tic = ticker.time()
     netlist["power_loss"] = 0.0
-    with tqdm(total=manager.Nsteps, desc="Stepping simulation") as pbar:
+    with tqdm(total=manager.Nsteps, desc="Stepping simulation",leave=False,disable=kwargs['disable']) as pbar:
         step = 0
         # reset = True
         while step < manager.Nsteps and vlims_ok:
             ###################################################################
             updated_inputs = {"Input temperature [K]": spm_temperature}
+            start_time = time.time()
             vlims_ok = manager._step(step, updated_inputs)
+            end_time = time.time()
+            spm_solve_time = end_time - start_time
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
+            # print('Qtot sum', Q_tot.sum())
             Q = get_cc_power_loss(net, netlist)
+            # print('cc power loss sum', Q.sum())
             # To do - Get cc heat from netlist
             # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
             # Q_ohm_cc /= net["throat.volume"][res_Ts]
             # key = "Volume-averaged Ohmic heating CC [W.m-3]"
             # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
             Q[res_Ts] += Q_tot
+            # print('Q mean', Q.mean())
+            # print('volume sum', net["pore.volume"].sum())
+            # print('total W heat produced pre-solve', Q.sum() * net["pore.volume"].sum())
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
+            start_time = time.time()
+            if not vlims_ok:
+                break
             ecm.run_step_transient(
                 project, dim_time_step, T0, cp, rho, thermal_third, **kwargs
             )
-            # Interpolate the node temperatures for the SPMs
+            end_time = time.time()
+            heat_solve_time = end_time - start_time
+            if kwargs['timeit']:
+                total_time = spm_solve_time + heat_solve_time
+                percent_spm_time = 100 * spm_solve_time / total_time
+                pbar.print(f'Solving SPMs took {spm_solve_time:.2f}s ({percent_spm_time:.2f}%)')# Interpolate the node temperatures for the SPMs
+            # print(f'before: (Max)[{np.round(spm_temperature.max(),5)}, (Min)[{np.round(spm_temperature.min(),5)}]')
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             ###################################################################
             if vlims_ok:
@@ -257,7 +304,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         "Time per step " + str(np.around((toc - tic) / manager.Nsteps, 3)) + "s"
     )
 
-    print("*" * 30)
-    print("ECM Sim time", ticker.time() - st)
-    print("*" * 30)
+    
+    # print("*" * 30)
+    # print("ECM Sim time", ticker.time() - st)
+    # print("*" * 30)
     return project, manager.step_output()

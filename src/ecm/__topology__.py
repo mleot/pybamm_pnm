@@ -13,7 +13,7 @@ import ecm
 import pandas as pd
 
 
-def plot_topology(net, ax=None):
+def plot_topology(net, ax=None, resistors=True):
     # inner = net["pore.inner"]
     # outer = net["pore.outer"]
     c1 = np.array([[75 / 255, 139 / 255, 190 / 255, 1]])  # Cyan-Blue Azure
@@ -23,8 +23,8 @@ def plot_topology(net, ax=None):
     c3 = np.array([[100 / 255, 100 / 255, 100 / 255, 1]])  # Granite Gray
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"), color=c1, ax=ax)
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"), color=c2, ax=ax)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"), color=c1, ax=ax,resistors=resistors)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"), color=c2, ax=ax,resistors=resistors)
     ax = pcoord(net, pores=net.pores("neg_cc"), color=c1, s=25, ax=ax)
     ax = pcoord(net, pores=net.pores("pos_cc"), color=c2, s=25, ax=ax)
     ax = pcoord(net, pores=net["pore.neg_tab"], color=c1, s=75, ax=ax)

@@ -4,6 +4,9 @@ Created on Wed Mar  4 13:32:23 2020
 
 @author: Tom
 """
+# import matplotlib
+# matplotlib.use('TkAgg')
+
 import os
 from scipy import io
 import numpy as np
@@ -19,6 +22,7 @@ from string import ascii_lowercase as abc
 import ecm
 
 
+
 prop_cycle = plt.rcParams["axes.prop_cycle"]
 colors = prop_cycle.by_key()["color"]
 
@@ -29,52 +33,83 @@ cmap = cm.inferno
 
 def get_saved_var_names():
     saved_vars = [
-        "var_Current_collector_current_density",
-        "var_Temperature",
-        "var_Terminal_voltage",
-        "var_X-averaged_negative_electrode_extent_of_lithiation",
-        "var_X-averaged_positive_electrode_extent_of_lithiation",
-        "var_X-averaged_negative_particle_surface_concentration",
-        "var_X-averaged_positive_particle_surface_concentration",
-        "var_Volume-averaged_total_heating",
-        "var_ECM_I_Local",
-        "var_ECM_R_local",
-        "var_Time",
-        "eta_Change_in_measured_open_circuit_voltage",
-        "eta_X-averaged_battery_reaction_overpotential",
-        "eta_X-averaged_battery_concentration_overpotential",
-        "eta_X-averaged_battery_electrolyte_ohmic_losses",
-        "eta_X-averaged_battery_solid_phase_ohmic_losses",
-        "var_Volume-averaged_Ohmic_heating",
-        "var_Volume-averaged_irreversible_electrochemical_heating",
-        "var_Volume-averaged_reversible_heating",
-        "var_Volume-averaged_Ohmic_heating_CC",
+        "Time [s]",
+        "Terminal voltage [V]",
+        "Volume-averaged cell temperature [K]",
+        "X-averaged cell temperature [K]",
+        "Current collector current density [A.m-2]",
+        "X-averaged negative electrode extent of lithiation",
+        "X-averaged positive electrode extent of lithiation",
+        "Volume-averaged total heating [W.m-3]",
+        "X-averaged battery reaction overpotential [V]",
+        "X-averaged battery concentration overpotential [V]",
+        "X-averaged battery electrolyte ohmic losses [V]",
+        "X-averaged battery solid phase ohmic losses [V]",
+        "X-averaged negative particle surface concentration [mol.m-3]",
+        "X-averaged positive particle surface concentration [mol.m-3]",
+        "Battery open-circuit voltage [V]",
+        "Volume-averaged irreversible electrochemical heating [W.m-3]",
+        "X-averaged irreversible electrochemical heating [W.m-3]",
+        "X-averaged reversible heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
+        "Volume-averaged reversible heating [W.m-3]",
+        'X-averaged Ohmic heating [W.m-3]',
+        'Volume-averaged Ohmic heating [W.m-3]',
+        'Negative current collector temperature [C]',
+        'Positive current collector temperature [C]',
+        'X-averaged cell temperature [C]',
+        'Volume-averaged cell temperature [C]',
+        'X-averaged negative electrode temperature [C]',
+        'X-averaged separator temperature [C]',
+        'X-averaged positive electrode temperature [C]',
+        "Total heating [W]",
+        "Total heating per unit electrode-pair area [W.m-2]",
+        "Volume-averaged total heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
     ]
     return saved_vars
+
+def get_animation_variable_pairs():
+    var_pairs = [
+        ["Terminal voltage [V]","Current collector current density [A.m-2]",],
+        ["X-averaged negative electrode extent of lithiation","X-averaged positive electrode extent of lithiation"],
+        ["Volume-averaged total heating [W.m-3]","Current collector current density [A.m-2]"],
+        ['Volume-averaged cell temperature [C]',"Volume-averaged total heating [W.m-3]"],
+        ["X-averaged battery concentration overpotential [V]","X-averaged battery electrolyte ohmic losses [V]"],
+        ["X-averaged battery reaction overpotential [V]","Volume-averaged irreversible electrochemical heating [W.m-3]"],
+        ['Volume-averaged Ohmic heating [W.m-3]',"Current collector current density [A.m-2]"],
+    ]
+    return var_pairs
 
 
 def get_saved_var_units():
     units = [
-        "A.m-2",
-        "K",
-        "V",
-        "-",
-        "-",
-        "mol.m-3",
-        "mol.m-3",
-        "W.m-3",
-        "A",
-        "Ohm",
-        "h",
-        "V",
-        "V",
-        "V",
-        "V",
-        "V",
-        "W.m-3",
-        "W.m-3",
-        "W.m-3",
-        "W.m-3",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "" ,    
+        "" ,    
+        "" ,    
+        "" ,    
+        "" ,    
     ]
     return units
 
@@ -112,13 +147,14 @@ def load_and_amalgamate(save_root, var_name):
 
 
 def format_label(i):
+    return i
     saved_vars = get_saved_var_names()
     units = get_saved_var_units()
     label = saved_vars[i]
     var_axis_name = label.replace("var_", "")
     var_axis_name = var_axis_name.replace("eta_", "")
     var_axis_name = var_axis_name.replace("_", " ")
-    var_axis_name = var_axis_name + " [" + units[i] + "]"
+    var_axis_name = var_axis_name + " " + units[i] + ""
     return var_axis_name
 
 
@@ -147,10 +183,13 @@ def load_cases(filepath):
         d[file] = load_data(os.path.join(filepath, file))
     return d
 
+def get_spm_map(filepath, filename="im_spm_map.npz"):
+    spm_map = np.load(os.path.join(filepath, filename))["arr_0"]
+    return spm_map
 
 def load_data(filepath):
     config = configparser.ConfigParser()
-    net = get_net(filepath=filepath, filename="net.pnm")
+    net,project = get_net(filepath=filepath, filename="net.pnm")
     weights = get_weights(net)
     amps = get_amp_cases(filepath)
     variables = get_saved_var_names()
@@ -158,11 +197,13 @@ def load_data(filepath):
     config.read(os.path.join(filepath, "config.txt"))
     data["config"] = config2dict(config)
     data["network"] = net
+    data["spm_map"] = get_spm_map(filepath, "im_spm_map.npz")
+    data["project"] = project
     for amp in amps:
         amp_folder = os.path.join(filepath, str(amp) + "A")
         data[amp] = {}
         for vi, v in enumerate(variables):
-            data[amp][vi] = {}
+            data[amp][v] = {}
             temp = load_and_amalgamate(amp_folder, v)
             if temp is not None:
                 if vi == 0:
@@ -171,18 +212,20 @@ def load_data(filepath):
                         print("Nans removed from", amp_folder)
                 if np.any(check_nans):
                     temp = temp[~check_nans, :]
-                data[amp][vi]["data"] = temp
+                data[amp][v]["data"] = temp
+                data[amp][v]['name'] = v
                 means = np.zeros(temp.shape[0])
                 for t in range(temp.shape[0]):
                     (mean, std_dev) = weighted_avg_and_std(temp[t, :], weights)
                     means[t] = mean
-                data[amp][vi]["mean"] = means
-                data[amp][vi]["min"] = np.min(temp, axis=1)
-                data[amp][vi]["max"] = np.max(temp, axis=1)
+                data[amp][v]["mean"] = means
+                data[amp][v]["min"] = np.min(temp, axis=1)
+                data[amp][v]["max"] = np.max(temp, axis=1)
         if temp is not None:
-            t_hrs = data[amp][10]["data"][:, 0]
+            t_hrs = data[amp]['Time [s]']["data"][:, 0]/3600
             cap = t_hrs * amp
             data[amp]["capacity"] = cap
+            data[amp]["time"] = t_hrs
     return data
 
 
@@ -193,7 +236,7 @@ def get_net(filepath=None, filename="spider_net.pnm"):
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
-    return net
+    return net, project
 
 
 def get_weights(net):
@@ -253,9 +296,9 @@ def min_mean_max_subplot(
     return ax
 
 
-def chargeogram(data, case_list, amp_list, group="neg"):
-    wrk.clear()
-    net = data[case_list[0]]["network"]
+def chargeogram(data, case_list, amp_list, group="neg",variable_id='Terminal voltage [V]',case_suffix="",sharey=False):
+    # wrk.clear()
+    var_name=None
     nrows = len(case_list)
     ncols = len(amp_list)
     fig, axes = plt.subplots(
@@ -263,77 +306,94 @@ def chargeogram(data, case_list, amp_list, group="neg"):
         ncols,
         figsize=(int(5 * ncols), int(5 * nrows)),
         sharex=True,
-        sharey=False,
+        sharey=sharey,
     )
-    var = 0  # Current density
-    Ts = net.throats("spm_" + group + "_inner")
-    roll_pos = np.cumsum(net["throat.arc_length"][Ts])
-    norm_roll_pos = roll_pos / roll_pos[-1]
-    Nspm = net.num_throats("spm_resistor")
-    if group == "neg":
-        spm_ids = np.arange(Nspm)[: len(Ts)]
-    else:
-        spm_ids = np.arange(Nspm)[-len(Ts) :]
+    var = variable_id  # Current density
     for ci, case in enumerate(case_list):
+
+        net = data[case_list[ci]]["network"]
+        Ts = net.throats("spm_" + group + "_inner")
+        roll_pos = np.cumsum(net["throat.arc_length"][Ts])
+        norm_roll_pos = roll_pos / roll_pos[-1]
+        Nspm = net.num_throats("spm_resistor")
+        if group == "neg":
+            spm_ids = np.arange(Nspm)[: len(Ts)]
+        else:
+            spm_ids = np.arange(Nspm)[-len(Ts) :]
+       
         for ai, amp in enumerate(amp_list):
             ax = axes[ci][ai]
             data_amalg = data[case][amp][var]["data"].copy()
-            mean = data[case][amp][var]["mean"][0]
-            data_amalg /= mean
-            data_amalg *= 100
+            if var_name is None:
+                var_name = data[case][amp][var]['name']
+            mean = data[case][amp][var]["mean"].mean()
+            # data_amalg /= mean
+            # data_amalg *= 100
+            # data_amalg -= 100
             filtered_data = data_amalg[:, spm_ids]
-            fmin = int(np.floor(filtered_data.min())) - 1
-            fmax = int(np.ceil(filtered_data.max())) + 1
-            nbins = fmax - fmin
+            # fmin = int(np.floor(filtered_data.min())) - 1
+            # fmax = int(np.ceil(filtered_data.max())) + 1
+            # nbins = fmax - fmin
+            fmin = filtered_data.min()
+            fmax = filtered_data.max()
+            nbins=50
             data_2d = np.zeros([len(spm_ids), nbins], dtype=float)
             for i in range(len(spm_ids)):
                 hdata, bins = np.histogram(
                     filtered_data[:, i], bins=nbins, range=(fmin, fmax), density=True
                 )
-                data_2d[i, :] = hdata * 100
+                data_2d[i, :] = hdata
 
             x_data, y_data = np.meshgrid(norm_roll_pos, (bins[:-1] + bins[1:]) / 2)
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
-            im = ax.pcolormesh(x_data, y_data - 100, heatmap.T, cmap=cm.inferno)
-            ax.set_title(case + ": " + str(amp) + "[A]")
+            im = ax.pcolormesh(x_data, y_data, heatmap.T, cmap=cm.inferno)
+            ax.set_title(case + case_suffix + ": " + str(amp) + "[C]")
             if ci == len(case_list) - 1:
                 ax.set_xlabel("Normalized roll position")
             plt.colorbar(im, ax=ax)
             ax.grid(True)
-
+    
+    fig.suptitle(var_name, y=0.98)
+    fig.tight_layout()
     return fig
 
 
-def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False):
-    wrk.clear()
-    net = data[case_list[0]]["network"]
+def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False, x='time',sharey=True,case_suffix=''):
+    # wrk.clear()
     nrows = len(amp_list)
     ncols = len(case_list)
     fig, axes = plt.subplots(
-        nrows, ncols, figsize=(int(5 * ncols), int(5 * nrows)), sharex=True, sharey=True
+        nrows, ncols, figsize=(int(5 * ncols), int(5 * nrows)), sharex=True, sharey=sharey
     )
-    Ts = net.throats("spm_" + group + "_inner")
-    roll_pos = np.cumsum(net["throat.arc_length"][Ts])
-    norm_roll_pos = roll_pos / roll_pos[-1]
-    Nspm = net.num_throats("spm_resistor")
-    if group == "neg":
-        spm_ids = np.arange(Nspm)[: len(Ts)]
-    else:
-        spm_ids = np.arange(Nspm)[-(len(Ts)) :]
     ax_list = []
     x_list = []
     y_list = []
     data_list = []
+    var_name = None
     for ci, case in enumerate(case_list):
+        net = data[case_list[ci]]["network"]
+        Ts = net.throats("spm_" + group + "_inner")
+        roll_pos = np.cumsum(net["throat.arc_length"][Ts])
+        norm_roll_pos = roll_pos / roll_pos[-1]
+        Nspm = net.num_throats("spm_resistor")
+        if group == "neg":
+            spm_ids = np.arange(Nspm)[: len(Ts)]
+        else:
+            spm_ids = np.arange(Nspm)[-(len(Ts)) :]
         for ai, amp in enumerate(amp_list):
             if nrows > 1:
                 ax = axes[ci][ai]
             else:
                 ax = axes[ci]
             data_amalg = data[case][amp][var]["data"].copy()
+            if var_name is None:
+                var_name = data[case][amp][var]['name']
             ax_list.append(ax)
-            cap = data[case][amp]["capacity"]
+            if x == 'time':
+                cap = data[case][amp]["time"]
+            else:
+                cap = data[case][amp]["capacity"]
             if normed:
                 mean = data[case][amp][var]["mean"][0]
                 data_amalg /= mean
@@ -348,12 +408,19 @@ def spacetime(data, case_list, amp_list, var=0, group="neg", normed=False):
             data_list.append(heatmap)
             im = ax.pcolormesh(x_data, y_data, heatmap, cmap=cm.inferno)
             ax.set_title(case)
+            ax.set_title(case + case_suffix + ": " + str(amp) + "[C]")
             if ai == 0:
-                ax.set_ylabel("Capacity [Ah]")
+                if x == 'time':
+                    ax.set_ylabel("Time [s]")
+                else:
+                    ax.set_ylabel("Capacity [Ah]")
             if (ci == len(case_list) - 1) or nrows == 1:
                 ax.set_xlabel("Normalized Roll Position")
             cbar = plt.colorbar(im, ax=ax)
             cbar.ax.locator_params(nbins=6)
+
+    fig.suptitle(var_name, y=0.98)
+    fig.tight_layout()
     return fig
 
 
@@ -366,10 +433,10 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     net = data[case]["network"]
     spm_vol = net["throat.volume"][net["throat.spm_resistor"]]
     # To do - make this much more robust = replace integers with key
-    Q_ohm = data[case][amp][16]["data"]
-    Q_irr = data[case][amp][17]["data"]
-    Q_rev = data[case][amp][18]["data"]
-    Q_ohm_cc = data[case][amp][19]["data"]
+    Q_ohm = data[case][amp][var_list[0]]["data"]
+    Q_irr = data[case][amp][var_list[1]]["data"]
+    Q_rev = data[case][amp][var_list[2]]["data"]
+    Q_ohm_cc = data[case][amp][var_list[3]]["data"]
     nt, nspm = Q_ohm.shape
     spm_vol_t = np.tile(spm_vol[:, np.newaxis], nt).T
     sum_Q_ohm = np.sum(Q_ohm * spm_vol_t, axis=1)
@@ -380,12 +447,12 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     base = np.zeros(len(sum_Q_ohm))
     cols = cmap(np.linspace(0.1, 0.9, 4))
     labels = []
-    for i in [18, 17, 16, 19]:
-        text = format_label(i).strip("X-averaged").strip("[W.m-3]")
+    for i in var_list:
+        text = format_label(i).strip("Volume-averaged").strip("[W.m-3]")
         labels.append(text.lstrip().rstrip().capitalize())
     for si, source in enumerate([sum_Q_rev, sum_Q_irr, sum_Q_ohm, sum_Q_ohm_cc]):
         ax.fill_between(
-            data[case][amp][10]["mean"],
+            data[case][amp]['Time [s]']["mean"],
             base,
             base + source,
             color=cols[si],
@@ -401,7 +468,7 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     return ax
 
 
-def plot_resistors(net, throats, color, ax):
+def plot_resistors(net, throats, color, ax,resistors=True):
     conns = net["throat.conns"][throats]
     coords = net["pore.coords"]
     v = coords[conns[:, 1]] - coords[conns[:, 0]]
@@ -410,6 +477,8 @@ def plot_resistors(net, throats, color, ax):
     zigzag = np.array(
         [0, 0, 0, 0, 0, 0, 1, -1, -1, 1, 1, -1, -1, 1, 1, -1, -1, 1, 0, 0, 0, 0, 0, 0]
     )
+    if not resistors:
+        zigzag = zigzag / 100
     segs = len(zigzag)
     p_start = coords[conns[:, 0]]
     x_all = [p_start[:, 0]]
@@ -436,7 +505,7 @@ def super_subplot(data, cases_left, cases_right, amp):
         sharey=False,
     )
     # Top row is current density
-    var = 0
+    var = "Current collector current density [A.m-2]"
     row_num = 0
     ax = axes[row_num][0]
     ncolor = len(cases_left)
@@ -477,7 +546,7 @@ def super_subplot(data, cases_left, cases_right, amp):
     ax.grid()
     add_figure_label(ax, 1)
     # 2nd row is temperature
-    var = 1
+    var = 'Volume-averaged cell temperature [C]'
     row_num = 1
     ax = axes[row_num][0]
     ncolor = len(cases_left)
@@ -519,10 +588,17 @@ def super_subplot(data, cases_left, cases_right, amp):
     add_figure_label(ax, 3)
     plt.ticklabel_format(axis="y", style="sci")
     ax = axes[2][0]
-    stacked_variables(data, cases_left[0], amp, [18, 17, 16, 19], ax, 4)
+    stacked_var_names = [
+        'Volume-averaged Ohmic heating [W.m-3]',
+        "Volume-averaged reversible heating [W.m-3]",
+        "Volume-averaged irreversible electrochemical heating [W.m-3]",
+        "Volume-averaged total heating [W.m-3]",
+        ]
+    stacked_variables(data, cases_left[0], amp, stacked_var_names, ax, 4)
     ax = axes[2][1]
-    stacked_variables(data, cases_right[0], amp, [18, 17, 16, 19], ax, 5)
+    stacked_variables(data, cases_right[0], amp, stacked_var_names, ax, 5)
     plt.tight_layout()
+    return fig
 
 
 def combined_subplot(
@@ -592,7 +668,8 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     net = data[case]["network"]
     weights = get_weights(net)
     project = net.project
-    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, "im_spm_map.npz"))["arr_0"]
+    # im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, "im_spm_map.npz"))["arr_0"] # ! Add this to the standard output so it can be read in correctly
+    im_spm_map = data[case]["spm_map"]
     title = filename.split("\\")
     if len(title) == 1:
         title = title[0]
@@ -607,8 +684,8 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     spm_map_copy = im_spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
-    time_var = "Time [h]"
-    time = data[case][amp][10]["mean"]
+    time_var = "Time [s]"
+    time = data[case][amp]['Time [s]']["mean"]
     vars2plot = {}
     vars2plot[plot_left] = data[case][amp][variables[0]]["data"]
     vars2plot[plot_right] = data[case][amp][variables[1]]["data"]
@@ -628,9 +705,11 @@ def animate_data4(data, case, amp, variables=None, filename=None):
             time,
             weights,
         ),
+        save_count=None,
+        cache_frame_data=True
     )
     Writer = animation.writers["ffmpeg"]
-    writer = Writer(fps=1, metadata=dict(artist="Tom Tranter"), bitrate=-1)
+    writer = Writer(fps=30, metadata=dict(artist="Tom Tranter"), bitrate=-1)
     if ".mp4" not in filename:
         filename = filename + ".mp4"
     func_ani.save(filename, writer=writer, dpi=300)
@@ -685,7 +764,7 @@ def update_animation_subplot(
     side="left",
     global_range=True,
 ):
-    print("Updating animation " + side + " frame", t)
+    # print("Updating animation " + side + " frame", t)
     if side == "left":
         ax1 = fig.axes[0]
         ax1c = fig.axes[1]
