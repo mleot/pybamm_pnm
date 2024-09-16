@@ -18,8 +18,8 @@ classifiers = [
 ]
 dependencies = [
     "numba",
-    "liionpack>=0.3.8",
-    "pybamm>=23.9",
+    "liionpack",
+    "pybamm",
     "openpnm==2.8.2",
     "ffmpeg-python",
     "ipywidgets"
@@ -30,5 +30,8 @@ Documentation = "https://ecm.readthedocs.io/en/latest/"
 Source = "https://github.com/TomTranter/pybamm_pnm"
 Tracker = "https://github.com/TomTranter/pybamm_pnm/issues"
 
-[tool.setuptools_scm]
-write_to = "ecm/_version.py"
+#[tool.setuptools_scm]
+#write_to = "ecm/_version.py"
+
+[tool.setuptools.packages.find]
+include = ["ecm", "ecm.*"]
