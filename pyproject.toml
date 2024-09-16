@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ecm"
 description = "Equivalent Circuit Model for battery modelling using PyBaMM"
-dynamic = ["version"]
+version = "0.0.3"
 authors = [
     {name = "Tom Tranter", email = "t.g.tranter@gmail.com"},
 ]
@@ -34,4 +34,5 @@ Tracker = "https://github.com/TomTranter/pybamm_pnm/issues"
 #write_to = "ecm/_version.py"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["ecm", "ecm.*"]
