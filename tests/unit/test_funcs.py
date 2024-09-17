@@ -21,10 +21,10 @@ class funcsTest(unittest.TestCase):
         I_app = 0.35
         dt = 5
         Nsteps = 3
-        hours = dt * Nsteps / 3600
+        hours = dt * Nsteps
         experiment = pybamm.Experiment(
             [
-                f"Discharge at {I_app} A for {hours} hours",
+                f"Discharge at {I_app} A for {hours} seconds",
             ],
             period=f"{dt} seconds",
         )

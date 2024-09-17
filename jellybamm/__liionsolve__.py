@@ -59,8 +59,10 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
     # print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     # Take I_app from first command of the experiment
-    proto = lp.generate_protocol_from_experiment(experiment)
-    I_app = proto[0]
+    protos, terms, steps = lp.generate_protocol_from_experiment(experiment)
+    if len(protos) > 1:
+        raise ValueError("Experiment must be a single step currently")
+    I_app = protos[0][0]
     I_typical = I_app / Nspm
 
     # print("Total pore volume", np.sum(net["pore.volume"]))
@@ -130,10 +132,11 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # Initialisation
     experiment_init = pybamm.Experiment(
         [
-            f"Discharge at {I_app} A for 4 seconds",
+            f"Discharge at {I_app} A for 4 seconds or until 0V",
         ],
         period="1 second",
     )
+    proto_init, term_init, type_init = lp.generate_protocol_from_experiment(experiment_init)
     # Solve the pack
     manager = lp.CasadiManager()
     manager.solve(
@@ -153,14 +156,15 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     vlims_ok = True
     tic = ticker.time()
     netlist["power_loss"] = 0.0
-    plt.figure()
-    with tqdm(total=manager.Nsteps, desc="Initialising simulation") as pbar:
+    # plt.figure()
+    skip_vcheck = True
+    manager.global_step = 0
+    with tqdm(total=len(proto_init[0]), desc="Initialising simulation") as pbar:
         step = 0
-        # reset = True
-        while step < manager.Nsteps and vlims_ok:
+        while step < len(proto_init[0]):
             ###################################################################
             updated_inputs = {"Input temperature [K]": spm_temperature}
-            vlims_ok = manager._step(step, updated_inputs)
+            vlims_ok = manager._step(step, proto_init[0], term_init[0], type_init[0], updated_inputs, skip_vcheck)
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
@@ -180,11 +184,14 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
-            step += 1
-            pbar.update(1)
-            temp_Ri = np.array(netlist.loc[manager.Ri_map].value)
-            plt.scatter(np.arange(len(temp_Ri)), temp_Ri, label=str(step))
-    plt.legend()
+            if vlims_ok:
+                step += 1
+                pbar.update(1)
+                temp_Ri = np.array(netlist.loc[manager.Ri_map].value)
+                # plt.scatter(np.arange(len(temp_Ri)), temp_Ri, label=str(step))
+            else:
+                break
+    # plt.legend()
     manager.step = step
     toc = ticker.time()
     lp.logger.notice("Initial step solve finished")
@@ -212,46 +219,61 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     )
     Qvar = "Volume-averaged total heating [W.m-3]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
-    lp.logger.notice("Starting step solve")
-    vlims_ok = True
-    tic = ticker.time()
     netlist["power_loss"] = 0.0
-    with tqdm(total=manager.Nsteps, desc="Stepping simulation") as pbar:
-        step = 0
-        # reset = True
-        while step < manager.Nsteps and vlims_ok:
-            ###################################################################
-            updated_inputs = {"Input temperature [K]": spm_temperature}
-            vlims_ok = manager._step(step, updated_inputs)
-            ###################################################################
-            # Apply Heat Sources
-            Q_tot = manager.output[Qid, step, :]
-            Q = get_cc_power_loss(net, netlist)
-            # To do - Get cc heat from netlist
-            # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
-            # Q_ohm_cc /= net["throat.volume"][res_Ts]
-            # key = "Volume-averaged Ohmic heating CC [W.m-3]"
-            # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
-            Q[res_Ts] += Q_tot
-            jellybamm.apply_heat_source_lp(project, Q)
-            # Calculate Global Temperature
-            jellybamm.run_step_transient(
-                project, dim_time_step, T0, cp, rho, thermal_third
-            )
-            # Interpolate the node temperatures for the SPMs
-            spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
-            ###################################################################
-            step += 1
-            pbar.update(1)
-    manager.step = step
-    toc = ticker.time()
-    lp.logger.notice("Step solve finished")
-    lp.logger.notice("Total stepping time " + str(np.around(toc - tic, 3)) + "s")
-    lp.logger.notice(
-        "Time per step " + str(np.around((toc - tic) / manager.Nsteps, 3)) + "s"
-    )
+    manager.global_step = 0
+    for ps, step_protocol in enumerate(protos):
+        step_termination = terms[ps]
+        step_type = steps[ps]
+        if step_termination == []:
+            step_termination = 0.0
+        # normally would run this:
 
-    print("*" * 30)
-    print("ECM Sim time", ticker.time() - st)
-    print("*" * 30)
-    return project, manager.step_output()
+        ## Now Solve
+        tic = ticker.time()
+        lp.logger.notice("Starting step solve")
+
+        vlims_ok = True
+        skip_vcheck = True
+        with tqdm(total=len(step_protocol), desc="Stepping simulation") as pbar:
+            step = 0
+            while step < len(step_protocol):
+                ###################################################################
+                updated_inputs = {"Input temperature [K]": spm_temperature}
+                vlims_ok = manager._step(step, step_protocol, step_termination, step_type, updated_inputs, skip_vcheck)
+                skip_vcheck = False
+                ###################################################################
+                # Apply Heat Sources
+                Q_tot = manager.output[Qid, step, :]
+                Q = get_cc_power_loss(net, netlist)
+                # To do - Get cc heat from netlist
+                # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
+                # Q_ohm_cc /= net["throat.volume"][res_Ts]
+                # key = "Volume-averaged Ohmic heating CC [W.m-3]"
+                # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
+                Q[res_Ts] += Q_tot
+                jellybamm.apply_heat_source_lp(project, Q)
+                # Calculate Global Temperature
+                jellybamm.run_step_transient(
+                    project, dim_time_step, T0, cp, rho, thermal_third
+                )
+                # Interpolate the node temperatures for the SPMs
+                spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
+                ###################################################################
+                if vlims_ok:
+                    manager.global_step += 1
+                    step += 1
+                    pbar.update(1)
+                else:
+                    break
+        manager.step = step
+        toc = ticker.time()
+        lp.logger.notice("Step solve finished")
+        lp.logger.notice("Total stepping time " + str(np.around(toc - tic, 3)) + "s")
+        lp.logger.notice(
+            "Time per step " + str(np.around((toc - tic) / manager.Nsteps, 3)) + "s"
+        )
+
+        print("*" * 30)
+        print("ECM Sim time", ticker.time() - st)
+        print("*" * 30)
+        return project, manager.step_output()
