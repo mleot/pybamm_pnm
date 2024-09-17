@@ -36,12 +36,12 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(parameter_values, experiment, initial_soc, project):
+def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwargs):
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
     st = ticker.time()
-    max_workers = int(os.cpu_count() / 2)
+    max_workers = kwargs.get('max_workers', int(os.cpu_count() / 2))
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
@@ -153,6 +153,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             initial_soc=initial_soc,
             setup_only=True,
         )
+        # Qvar = "Total heating [W]"
         Qvar = "Volume-averaged total heating [W.m-3]"
         Qid = np.argwhere(np.asarray(tmp_manager.variable_names) == Qvar).flatten()[0]
         lp.logger.notice("Starting initial step solve")
@@ -205,7 +206,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         )
 
 
-    netlist, project, phase, spm_temperature = initialize_simulation(I_app, netlist, project, phase, spm_temperature)
+    # netlist, project, phase, spm_temperature = initialize_simulation(I_app, netlist, project, phase, spm_temperature)
     ###########################################################################
     # Real Solve
     ###########################################################################
@@ -225,11 +226,11 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         setup_only=True,
     )
     Qvar = "Volume-averaged total heating [W.m-3]"
+    # Qvar = "Total heating [W]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     netlist["power_loss"] = 0.0
     manager.global_step = 0
-    step_previous_Iapp = 0
-    print(types, terms)
+    # step_previous_Iapp = 0
     for ps, step_protocol in enumerate(protos):
         step_termination = terms[ps]
         step_type = types[ps]
@@ -237,11 +238,11 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             step_termination = 0.0
 
 
-        # do reinitialization if switching directions
-        if step_protocol[0] != step_previous_Iapp and step_protocol[0] != 0:
-            netlist, project, phase, spm_temperature = initialize_simulation(step_protocol[0], netlist, project, phase, spm_temperature)
-            manager.netlist = netlist
-        step_previous_Iapp = step_protocol[-1]
+        # # do reinitialization if switching directions
+        # if step_protocol[0] != step_previous_Iapp and step_protocol[0] != 0:
+        #     netlist, project, phase, spm_temperature = initialize_simulation(step_protocol[0], netlist, project, phase, spm_temperature)
+        #     manager.netlist = netlist
+        # step_previous_Iapp = step_protocol[-1]
 
         ## Now Solve
         tic = ticker.time()
@@ -259,7 +260,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
                     skip_vcheck = False
                 ###################################################################
                 # Apply Heat Sources
-                Q_tot = manager.output[Qid, step, :]
+                Q_tot = manager.output[Qid, manager.global_step, :]
                 Q = get_cc_power_loss(net, netlist)
                 # To do - Get cc heat from netlist
                 # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
