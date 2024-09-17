@@ -525,13 +525,13 @@ def lump_thermal_props(param):
     ]
     all_props = np.zeros([len(props), len(layers)])
     for i, prop in enumerate(props):
-        for j, layer in enumerate(layers):
-            all_props[i][j] = param[layer + " " + prop]
+        for j, l in enumerate(layers):
+            all_props[i][j] = param[l + " " + prop]
     # Break them up
-    lens = all_props[0, :]
-    rhos = all_props[1, :]
-    Cps = all_props[2, :]
-    ks = all_props[3, :]
+    lens = all_props[:, 0]
+    rhos = all_props[:, 1]
+    Cps = all_props[:, 2]
+    ks = all_props[:, 3]
     # Lumped props
     rho_lump = np.sum(lens * rhos) / np.sum(lens)
     Cp_lump = np.sum(lens * rhos * Cps) / np.sum(lens * rhos)
