@@ -261,7 +261,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwa
     phase = project.phases()["phase_01"]
     phys = project.physics()["phys_01"]
     phys["pore.A1"] = 0.0
-    Q_spm = phys["pore.heat_source"] * net["pore.volume"] 
+    Q_spm = phys["pore.heat_source"] #* net["pore.volume"]
     # Q_cc = net["pore.cc_power_loss"]
     # print(
     #     "Q_spm",
@@ -554,8 +554,8 @@ def lump_thermal_props(param):
     ]
     all_props = np.zeros([len(props), len(layers)])
     for i, prop in enumerate(props):
-        for j, l in enumerate(layers):
-            all_props[i][j] = param[l + " " + prop]
+        for j, layer in enumerate(layers):
+            all_props[i][j] = param[layer + " " + prop]
     # Break them up
     lens = all_props[0, :]
     rhos = all_props[1, :]

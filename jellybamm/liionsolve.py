@@ -63,6 +63,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     # if len(protos) > 1:
     #     raise ValueError("Experiment must be a single step currently")
     I_app = protos[0][0]
+    if I_app == 0:
+        I_app = protos[1][0]
     I_typical = I_app / Nspm
 
     # print("Total pore volume", np.sum(net["pore.volume"]))
@@ -153,8 +155,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             initial_soc=initial_soc,
             setup_only=True,
         )
-        # Qvar = "Total heating [W]"
-        Qvar = "Volume-averaged total heating [W.m-3]"
+        Qvar = "Total heating [W]"
+        # Qvar = "Volume-averaged total heating [W.m-3]"
         Qid = np.argwhere(np.asarray(tmp_manager.variable_names) == Qvar).flatten()[0]
         lp.logger.notice("Starting initial step solve")
         vlims_ok = True
@@ -197,7 +199,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
                     break
         # plt.legend()
         tmp_manager.step = step
-        return netlist, project, phase, spm_temperature
+        return netlist, project, phase, spm_temperature, tmp_manager
         toc = ticker.time()
         lp.logger.notice("Initial step solve finished")
         lp.logger.notice("Total stepping time " + str(np.around(toc - tic, 3)) + "s")
@@ -206,7 +208,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         )
 
 
-    # netlist, project, phase, spm_temperature = initialize_simulation(I_app, netlist, project, phase, spm_temperature)
+    # netlist, project, phase, spm_temperature, tmp_manager = initialize_simulation(I_app, netlist, project, phase, spm_temperature)
     ###########################################################################
     # Real Solve
     ###########################################################################
@@ -225,24 +227,28 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         initial_soc=initial_soc,
         setup_only=True,
     )
-    Qvar = "Volume-averaged total heating [W.m-3]"
-    # Qvar = "Total heating [W]"
+    # manager.temp_Ri = tmp_manager.temp_Ri
+    # Qvar = "Volume-averaged total heating [W.m-3]"
+    Qvar = "Total heating [W]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     netlist["power_loss"] = 0.0
     manager.global_step = 0
-    # step_previous_Iapp = 0
+    step_previous_Iapp = 0
     for ps, step_protocol in enumerate(protos):
         step_termination = terms[ps]
         step_type = types[ps]
         if step_termination == []:
             step_termination = 0.0
 
-
-        # # do reinitialization if switching directions
         # if step_protocol[0] != step_previous_Iapp and step_protocol[0] != 0:
-        #     netlist, project, phase, spm_temperature = initialize_simulation(step_protocol[0], netlist, project, phase, spm_temperature)
-        #     manager.netlist = netlist
-        # step_previous_Iapp = step_protocol[-1]
+        #     manager._step(0, step_protocol, step_termination, step_type, None, True)
+        #     manager._step(0, step_protocol, step_termination, step_type, None, True)
+        # do reinitialization if switching directions
+        if step_protocol[0] != step_previous_Iapp and step_protocol[0] != 0:
+            netlist, project, phase, _, tmp_manager = initialize_simulation(step_protocol[0], netlist, project, phase, spm_temperature)
+            manager.temp_Ri = tmp_manager.temp_Ri
+            manager.netlist = netlist
+        step_previous_Iapp = step_protocol[-1]
 
         ## Now Solve
         tic = ticker.time()
@@ -262,6 +268,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
                 # Apply Heat Sources
                 Q_tot = manager.output[Qid, manager.global_step, :]
                 Q = get_cc_power_loss(net, netlist)
+                # print(Q_tot)
                 # To do - Get cc heat from netlist
                 # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
                 # Q_ohm_cc /= net["throat.volume"][res_Ts]
@@ -275,6 +282,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
                 )
                 # Interpolate the node temperatures for the SPMs
                 spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
+                print(spm_temperature)
                 ###################################################################
                 if vlims_ok:
                     manager.global_step += 1

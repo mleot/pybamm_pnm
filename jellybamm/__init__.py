@@ -2,13 +2,13 @@
 JellyBaMM: a package for simulating Li-ion electrochemistry on jellyroll structures with PyBaMM
 """
 
-from .__funcs__ import *
-from .__postprocess__ import *
-from .__definitions__ import *
-from .__segment_jellyroll__ import *
-from .__utilities__ import *
-from .__topology__ import *
-from .__battery__ import *
-from .__liionsolve__ import *
+from .funcs import *
+from .postprocess import *
+from .definitions import *
+from .segment_jellyroll import *
+from .utilities import *
+from .topology import *
+from .battery import *
+from .liionsolve import *
 
 __version__ = "0.0.3"

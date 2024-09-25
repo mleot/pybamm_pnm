@@ -42,4 +42,4 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["jellybamm"]
+include = ["jellybamm", "jellybamm.*"]
