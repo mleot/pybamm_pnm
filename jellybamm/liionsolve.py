@@ -31,7 +31,15 @@ def fT_non_dim(parameter_values, T):
     T_ref = parameter_values.evaluate(param.T_ref)
     return (T - T_ref) / Delta_T
 
+def get_skin_temperature(project):
+    net = project.network
+    outer_pores = net['pore.outer']
+    spms = net['throat.spm_resistor']
+    outers = np.argwhere(outer_pores)
 
+    skin_temperature = project.phases()['phase_01']['pore.temperature'][outers].flatten()
+    return skin_temperature
+ 
 def do_heating():
     pass
 
@@ -42,6 +50,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     ###########################################################################
     st = ticker.time()
     max_workers = kwargs.get('max_workers', int(os.cpu_count() / 2))
+    kwargs.setdefault('skin_temp_cutoff', None)
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
@@ -282,8 +291,12 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
                 )
                 # Interpolate the node temperatures for the SPMs
                 spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
-                print(spm_temperature)
-                ###################################################################
+                skin_temps = get_skin_temperature(project=project)
+                print(skin_temps.max())
+                if kwargs.get('skin_temp_cutoff',None) is not None:
+                    if any(skin_temps>kwargs['skin_temp_cutoff']):
+                        vlims_ok = False
+               ###################################################################
                 if vlims_ok:
                     manager.global_step += 1
                     step += 1
