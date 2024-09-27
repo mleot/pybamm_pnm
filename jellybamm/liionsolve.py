@@ -131,6 +131,17 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     V = 3.6  # initial guess for cell voltage
     # I_app = 0.5
     netlist = jellybamm.network_to_netlist(net, Rs, Ri, V, I_app)
+    # return netlist
+    desc = np.array(netlist["desc"]).astype("<U1")  # just take first character
+    I_map = desc == "I"
+    Terminal_Node = np.array(netlist[I_map].node1)
+    def tabs_voltage_term(V_node):
+        if V_node[Terminal_Node] < 2.5:
+            return True
+
+    node_termination_func = tabs_voltage_term
+
+    # return netlist
     T0 = parameter_values["Initial temperature [K]"]
     e_heights = net["throat.electrode_height"][net.throats("throat.spm_resistor")]
     spm_temperature = np.ones(Nspm) * T0
@@ -234,6 +245,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         inputs=inputs,
         nproc=max_workers,
         initial_soc=initial_soc,
+        node_termination_func=node_termination_func,
         setup_only=True,
     )
     # manager.temp_Ri = tmp_manager.temp_Ri
