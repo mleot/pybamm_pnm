@@ -61,6 +61,8 @@ def output_variables():
         "Volume-averaged cell temperature [K]",
         "X-averaged cell temperature [K]",
         "Current collector current density [A.m-2]",
+        "Positive electrode stoichiometry",
+        "Negative electrode stoichiometry",
         "X-averaged negative electrode extent of lithiation",
         "X-averaged positive electrode extent of lithiation",
         "Volume-averaged total heating [W.m-3]",

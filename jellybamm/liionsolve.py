@@ -153,13 +153,15 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     ###########################################################################
     # Initialisation
     def initialize_simulation(I_app, netlist, project, phase, spm_temperature):
-        if I_app < 0:
-            experiment_string = f"Discharge at {abs(I_app)} A for 4 seconds or until 0V"
-        elif I_app > 0:
-            experiment_string = f"Charge at {I_app} A for 4 seconds or until 4.5V"
+        print(I_app)
+        if I_app > 0:
+            experiment_string = f"Discharge at {abs(I_app)} A for 0.1 seconds or until 0V"
+        elif I_app < 0:
+            experiment_string = f"Charge at {I_app} A for 0.1 seconds or until 4.5V"
         else:
             raise ValueError("I_app must be non-zero")
-        experiment_init = pybamm.Experiment([experiment_string], period="1 second")
+        experiment_init = pybamm.Experiment([experiment_string], period="0.1 second")
+        print(experiment_string)
 
         proto_init, term_init, type_init = lp.generate_protocol_from_experiment(experiment_init)
         # Solve the pack
@@ -265,10 +267,10 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         #     manager._step(0, step_protocol, step_termination, step_type, None, True)
         #     manager._step(0, step_protocol, step_termination, step_type, None, True)
         # do reinitialization if switching directions
-        if step_protocol[0] != step_previous_Iapp and step_protocol[0] != 0:
+        if step_protocol[0] != step_previous_Iapp and step_protocol[0] != 0 and ps > 0:
             netlist, project, phase, _, tmp_manager = initialize_simulation(step_protocol[0], netlist, project, phase, spm_temperature)
             manager.temp_Ri = tmp_manager.temp_Ri
-            manager.netlist = netlist
+            # manager.netlist = netlist
         step_previous_Iapp = step_protocol[-1]
 
         ## Now Solve
@@ -281,6 +283,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
             step = 0
             while step < len(step_protocol):
                 ###################################################################
+                print(spm_temperature.min(), spm_temperature.max())
                 updated_inputs = {"Input temperature [K]": spm_temperature}
                 vlims_ok = manager._step(step, step_protocol, step_termination, step_type, updated_inputs, skip_vcheck)
                 if step > 5:
@@ -289,6 +292,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
                 # Apply Heat Sources
                 Q_tot = manager.output[Qid, manager.global_step, :]
                 Q = get_cc_power_loss(net, netlist)
+
                 # print(Q_tot)
                 # To do - Get cc heat from netlist
                 # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
