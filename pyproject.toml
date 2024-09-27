@@ -1,6 +1,9 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = [
+    "hatch-vcs",
+    "hatchling",
+]
+build-backend = "hatchling.build"
 
 [project]
 name = "jellybamm"
@@ -41,5 +44,5 @@ dev = [
     "mkdocs-material-extensions>=1.0"
 ]
 
-[tool.setuptools.packages.find]
-include = ["jellybamm", "jellybamm.*"]
+#[tool.setuptools.packages.find]
+#include = ["jellybamm", "jellybamm.*"]
