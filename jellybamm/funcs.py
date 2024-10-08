@@ -416,7 +416,7 @@ def cartesian_transform(r, t):
     return x, y
 
 
-def interpolate_spm_number(project, x_len=2000, y_len=2000):
+def interpolate_spm_number(project, x_len=2000, y_len=2000,plot=False):
     net = project.network
     all_x = []
     all_y = []
@@ -453,8 +453,9 @@ def interpolate_spm_number(project, x_len=2000, y_len=2000):
     ]
     arr = myInterpolator(grid_x, grid_y, 0)
     # arr[arr == -1] = np.nan
-    fig, (ax1) = plt.subplots(1, 1)
-    ax1.imshow(arr)
+    if plot:
+        fig, (ax1) = plt.subplots(1, 1)
+        ax1.imshow(arr)
     return arr
 
 
@@ -579,3 +580,25 @@ def lump_thermal_props(param):
         "lump_Cp": Cp_lump,
     }
     return out
+
+
+def plot_cell_id_location(cell_id, im_spm_map, output, var_name=None):
+    if not isinstance(cell_id, list):
+        cell_id = [cell_id]
+    time = output['Time [s]']
+    yvar = var_name or 'Volume-averaged cell temperature [K]'
+    fig, (ax1, ax2) = plt.subplots(1,2, figsize=(20,10))
+    for idx in cell_id:
+        print(idx)
+        ts = output[yvar][:,idx]
+        ax2.plot(time,ts, marker='.',label=idx)
+
+    ax2.legend(title='cell_id')
+    arr = im_spm_map.copy().astype(float)
+    mask = im_spm_map == any(cell_id)
+    mask = np.isin(im_spm_map, cell_id)
+    arr[mask] = 2 * im_spm_map.max()
+    ax1.imshow(arr)
+
+    ax2.set_xlabel('Time [s]')
+    ax2.set_ylabel(yvar)
