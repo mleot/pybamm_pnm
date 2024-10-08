@@ -267,10 +267,10 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         #     manager._step(0, step_protocol, step_termination, step_type, None, True)
         #     manager._step(0, step_protocol, step_termination, step_type, None, True)
         # do reinitialization if switching directions
-        if step_protocol[0] != step_previous_Iapp and step_protocol[0] != 0:
+        if step_protocol[0] != step_previous_Iapp and step_protocol[0] != 0 and ps > 0:
             netlist, project, phase, _, tmp_manager = initialize_simulation(step_protocol[0], netlist, project, phase, spm_temperature)
             manager.temp_Ri = tmp_manager.temp_Ri
-            # manager.netlist = netlist
+            manager.netlist = netlist
         step_previous_Iapp = step_protocol[-1]
 
         ## Now Solve
