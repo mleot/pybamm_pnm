@@ -9,4 +9,7 @@ dist/
 .virtual_documents/
 .vscode/
 
+**.png
+**.gif
+**.npz
 
