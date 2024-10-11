@@ -50,7 +50,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
     ###########################################################################
     st = ticker.time()
     max_workers = kwargs.get('max_workers', int(os.cpu_count() / 2))
-    kwargs.setdefault('skin_temp_cutoff', None)
+    kwargs.setdefault('skin_temp_cutoff [K]', None)
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
@@ -308,8 +308,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
                 # Interpolate the node temperatures for the SPMs
                 spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
                 skin_temps = get_skin_temperature(project=project)
-                if kwargs.get('skin_temp_cutoff',None) is not None:
-                    if any(skin_temps>kwargs['skin_temp_cutoff']):
+                if kwargs.get('skin_temp_cutoff [K]',None) is not None:
+                    if any(skin_temps>kwargs['skin_temp_cutoff [K]']):
                         vlims_ok = False
                ###################################################################
                 if vlims_ok:
