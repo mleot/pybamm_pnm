@@ -187,7 +187,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
         # plt.figure()
         skip_vcheck = True
         tmp_manager.global_step = 0
-        with tqdm(total=len(proto_init[0]), desc="Initialising simulation") as pbar:
+        with tqdm(total=len(proto_init[0]), desc="Initialising simulation",disable=kwargs.get('disable_tqdm',True)) as pbar:
             step = 0
             while step < len(proto_init[0]):
                 ###################################################################
@@ -279,7 +279,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project, **kwar
 
         vlims_ok = True
         skip_vcheck = True
-        with tqdm(total=len(step_protocol), desc=f"Stepping simulation ({ps+1}/{len(protos)})") as pbar:
+        with tqdm(total=len(step_protocol), desc=f"Stepping simulation ({ps+1}/{len(protos)})",disable=kwargs.get('disable_tqdm',True)) as pbar:
             step = 0
             while step < len(step_protocol):
                 ###################################################################
