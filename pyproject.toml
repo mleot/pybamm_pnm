@@ -22,7 +22,7 @@ requires-python = ">=3.8"
 dependencies = [
     "numba",
     #"liionpack>=0.3.11",
-    "pybamm==24.9",
+    "pybamm==25.1",
     "openpnm==2.8.2",
     "ffmpeg-python",
     "ipywidgets"
